@@ -3,20 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b1220">
-  <title>ice_store</title>
+  <meta name="theme-color" content="#15100d">
+  <title>天津本地鲜肉精选</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
-      --bg: var(--tg-theme-bg-color, #0b1220);
-      --surface: var(--tg-theme-secondary-bg-color, #131c2f);
-      --text: var(--tg-theme-text-color, #f8fafc);
-      --muted: var(--tg-theme-hint-color, #94a3b8);
-      --accent: var(--tg-theme-button-color, #3b82f6);
+      --bg: var(--tg-theme-bg-color, #15100d);
+      --surface: var(--tg-theme-secondary-bg-color, #211814);
+      --text: var(--tg-theme-text-color, #fff8f3);
+      --muted: var(--tg-theme-hint-color, #b9a69b);
+      --accent: var(--tg-theme-button-color, #e5483d);
       --accent-text: var(--tg-theme-button-text-color, #ffffff);
-      --line: rgba(148, 163, 184, .18);
-      --soft: rgba(255, 255, 255, .06);
-      --shadow: 0 18px 45px rgba(0, 0, 0, .20);
+      --line: rgba(255,255,255,.10);
+      --soft: rgba(255,255,255,.06);
+      --gold: #f4c86a;
+      --shadow: 0 18px 46px rgba(0,0,0,.28);
     }
 
     * { box-sizing: border-box; }
@@ -26,357 +27,97 @@
       min-height: 100vh;
       color: var(--text);
       background:
-        radial-gradient(circle at 90% -10%, rgba(59,130,246,.24), transparent 30%),
+        radial-gradient(circle at 90% -10%, rgba(229,72,61,.24), transparent 32%),
         var(--bg);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-      padding-bottom: calc(100px + env(safe-area-inset-bottom));
+      padding-bottom: calc(102px + env(safe-area-inset-bottom));
       -webkit-font-smoothing: antialiased;
     }
 
     button, input { font: inherit; }
     button { cursor: pointer; }
+    .app { width: min(760px, 100%); margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 15px 30px; }
 
-    .app {
-      width: min(760px, 100%);
-      margin: 0 auto;
-      padding: max(16px, env(safe-area-inset-top)) 15px 28px;
-    }
-
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .brand { display: flex; align-items: center; gap: 11px; }
-    .logo {
-      width: 46px;
-      height: 46px;
-      border-radius: 15px;
-      display: grid;
-      place-items: center;
-      font-size: 23px;
-      background: linear-gradient(135deg, #60a5fa, #2563eb);
-      box-shadow: 0 10px 24px rgba(37,99,235,.28);
-    }
-    .brand h1 { margin: 0; font-size: 20px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .logo { width: 48px; height: 48px; flex: 0 0 auto; border-radius: 15px; display: grid; place-items: center; font-size: 25px; background: linear-gradient(135deg, #f36a5f, #bd251e); box-shadow: 0 10px 24px rgba(189,37,30,.32); }
+    .brand h1 { margin: 0; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .brand p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .round-btn { width: 44px; height: 44px; flex: 0 0 auto; border-radius: 14px; border: 1px solid var(--line); color: var(--text); background: var(--soft); font-size: 19px; }
 
-    .round-btn {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      border: 1px solid var(--line);
-      color: var(--text);
-      background: var(--soft);
-      font-size: 19px;
-    }
-
-    .hero {
-      padding: 22px;
-      border-radius: 24px;
-      background: linear-gradient(135deg, rgba(37,99,235,.97), rgba(79,70,229,.92));
-      box-shadow: var(--shadow);
-      overflow: hidden;
-      position: relative;
-    }
-    .hero::after {
-      content: "";
-      position: absolute;
-      width: 180px;
-      height: 180px;
-      border-radius: 50%;
-      right: -78px;
-      top: -92px;
-      background: rgba(255,255,255,.14);
-    }
-    .hero small {
-      display: inline-flex;
-      padding: 7px 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.15);
-      color: #fff;
-    }
+    .hero { padding: 23px; border-radius: 24px; position: relative; overflow: hidden; background: linear-gradient(135deg, rgba(197,40,31,.98), rgba(116,24,20,.96)); box-shadow: var(--shadow); }
+    .hero::after { content: ""; position: absolute; width: 190px; height: 190px; border-radius: 50%; right: -82px; top: -96px; background: rgba(255,255,255,.10); }
+    .hero small { display: inline-flex; padding: 7px 10px; border-radius: 999px; color: #fff; background: rgba(255,255,255,.14); }
     .hero h2 { margin: 15px 0 8px; font-size: 27px; color: #fff; }
-    .hero p { margin: 0; line-height: 1.6; color: rgba(255,255,255,.82); font-size: 14px; }
+    .hero p { margin: 0; color: rgba(255,255,255,.84); line-height: 1.65; font-size: 14px; }
 
-    .section-title {
-      display: flex;
-      justify-content: space-between;
-      align-items: end;
-      margin: 24px 2px 12px;
-    }
+    .quick-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 13px; }
+    .quick-link { min-width: 0; padding: 13px 8px; border: 1px solid var(--line); border-radius: 17px; text-align: center; color: var(--text); background: var(--surface); }
+    .quick-link b { display: block; font-size: 19px; margin-bottom: 6px; }
+    .quick-link span { display: block; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .section-title { display: flex; justify-content: space-between; align-items: end; margin: 24px 2px 12px; }
     .section-title h3 { margin: 0; font-size: 18px; }
     .section-title span { color: var(--muted); font-size: 12px; }
 
-    .search {
-      height: 50px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 0 14px;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: var(--surface);
-    }
-    .search input {
-      width: 100%;
-      border: 0;
-      outline: 0;
-      color: var(--text);
-      background: transparent;
-    }
+    .search { height: 50px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+    .search input { width: 100%; border: 0; outline: 0; color: var(--text); background: transparent; }
     .search input::placeholder { color: var(--muted); }
 
-    .tabs {
-      display: flex;
-      gap: 9px;
-      overflow-x: auto;
-      padding: 12px 1px 4px;
-      scrollbar-width: none;
-    }
+    .tabs { display: flex; gap: 9px; overflow-x: auto; padding: 12px 1px 4px; scrollbar-width: none; }
     .tabs::-webkit-scrollbar { display: none; }
-    .tab {
-      white-space: nowrap;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 9px 14px;
-      color: var(--muted);
-      background: var(--soft);
-    }
-    .tab.active {
-      border-color: transparent;
-      color: var(--accent-text);
-      background: var(--accent);
-    }
+    .tab { white-space: nowrap; border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; color: var(--muted); background: var(--soft); }
+    .tab.active { border-color: transparent; color: var(--accent-text); background: var(--accent); }
 
-    .products {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      margin-top: 12px;
-    }
+    .products { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; margin-top: 12px; }
+    .product { min-width: 0; padding: 15px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 8px 24px rgba(0,0,0,.10); }
+    .product-icon { width: 50px; height: 50px; display: grid; place-items: center; border-radius: 15px; font-size: 27px; background: var(--soft); }
+    .badge { display: inline-block; margin-top: 11px; padding: 5px 8px; border-radius: 999px; color: var(--gold); background: rgba(244,200,106,.10); font-size: 10px; }
+    .product h4 { margin: 10px 0 7px; font-size: 15px; line-height: 1.35; }
+    .product p { margin: 0; min-height: 38px; color: var(--muted); font-size: 12px; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .product-footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 13px; }
+    .price { font-weight: 800; font-size: 14px; }
+    .view-btn { border: 0; border-radius: 11px; padding: 8px 11px; color: var(--accent-text); background: var(--accent); font-size: 12px; }
+    .empty { grid-column: 1 / -1; padding: 36px 18px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 18px; }
 
-    .product {
-      min-width: 0;
-      padding: 15px;
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      background: var(--surface);
-      box-shadow: 0 8px 24px rgba(0,0,0,.08);
-    }
-    .product-icon {
-      width: 48px;
-      height: 48px;
-      display: grid;
-      place-items: center;
-      border-radius: 15px;
-      font-size: 25px;
-      background: var(--soft);
-    }
-    .badge {
-      display: inline-block;
-      margin-top: 11px;
-      padding: 5px 8px;
-      border-radius: 999px;
-      color: #93c5fd;
-      background: rgba(59,130,246,.13);
-      font-size: 10px;
-    }
-    .product h4 {
-      margin: 10px 0 7px;
-      font-size: 15px;
-      line-height: 1.35;
-    }
-    .product p {
-      margin: 0;
-      min-height: 38px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.55;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    .product-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-top: 13px;
-    }
-    .price { font-weight: 800; font-size: 15px; }
-    .view-btn {
-      border: 0;
-      border-radius: 11px;
-      padding: 8px 11px;
-      color: var(--accent-text);
-      background: var(--accent);
-      font-size: 12px;
-    }
+    .info-card { display: flex; gap: 12px; padding: 15px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+    .info-card .emoji { font-size: 22px; }
+    .info-card h4 { margin: 0 0 6px; font-size: 14px; }
+    .info-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
 
-    .empty {
-      grid-column: 1 / -1;
-      padding: 36px 18px;
-      text-align: center;
-      color: var(--muted);
-      border: 1px dashed var(--line);
-      border-radius: 18px;
-    }
-
-    .selected-bar {
-      position: fixed;
-      z-index: 30;
-      left: 50%;
-      bottom: calc(12px + env(safe-area-inset-bottom));
-      transform: translateX(-50%);
-      width: min(728px, calc(100% - 24px));
-      display: none;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 13px 12px 16px;
-      border: 1px solid var(--line);
-      border-radius: 19px;
-      background: color-mix(in srgb, var(--surface) 94%, transparent);
-      backdrop-filter: blur(18px);
-      box-shadow: var(--shadow);
-    }
+    .selected-bar { position: fixed; z-index: 30; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(728px, calc(100% - 24px)); display: none; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 13px 12px 16px; border: 1px solid var(--line); border-radius: 19px; background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(18px); box-shadow: var(--shadow); }
     .selected-bar.show { display: flex; }
     .selected-bar b { display: block; font-size: 14px; }
     .selected-bar span { color: var(--muted); font-size: 11px; }
-    .selected-bar button {
-      border: 0;
-      border-radius: 13px;
-      padding: 11px 14px;
-      color: var(--accent-text);
-      background: var(--accent);
-      font-weight: 700;
-    }
+    .selected-bar button { border: 0; border-radius: 13px; padding: 11px 14px; color: var(--accent-text); background: var(--accent); font-weight: 700; }
 
-    .overlay {
-      position: fixed;
-      z-index: 60;
-      inset: 0;
-      display: none;
-      align-items: flex-end;
-      background: rgba(0,0,0,.55);
-    }
+    .overlay { position: fixed; z-index: 60; inset: 0; display: none; align-items: flex-end; background: rgba(0,0,0,.58); }
     .overlay.show { display: flex; }
-    .sheet {
-      width: min(760px, 100%);
-      max-height: 88vh;
-      margin: 0 auto;
-      overflow-y: auto;
-      padding: 12px 17px calc(20px + env(safe-area-inset-bottom));
-      border-radius: 26px 26px 0 0;
-      background: var(--bg);
-      box-shadow: var(--shadow);
-    }
-    .handle {
-      width: 42px;
-      height: 5px;
-      border-radius: 999px;
-      margin: 1px auto 14px;
-      background: var(--line);
-    }
-    .sheet-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+    .sheet { width: min(760px, 100%); max-height: 88vh; margin: 0 auto; overflow-y: auto; padding: 12px 17px calc(20px + env(safe-area-inset-bottom)); border-radius: 26px 26px 0 0; background: var(--bg); box-shadow: var(--shadow); }
+    .handle { width: 42px; height: 5px; border-radius: 999px; margin: 1px auto 14px; background: var(--line); }
+    .sheet-head { display: flex; justify-content: space-between; align-items: center; }
     .sheet-head h3 { margin: 0; }
-    .close-btn {
-      border: 0;
-      color: var(--muted);
-      background: transparent;
-      font-size: 26px;
-    }
-    .detail-icon {
-      width: 72px;
-      height: 72px;
-      display: grid;
-      place-items: center;
-      margin-top: 15px;
-      border-radius: 22px;
-      font-size: 38px;
-      background: var(--soft);
-    }
+    .close-btn { border: 0; color: var(--muted); background: transparent; font-size: 26px; }
+    .detail-icon { width: 72px; height: 72px; display: grid; place-items: center; margin-top: 15px; border-radius: 22px; font-size: 38px; background: var(--soft); }
     .detail h2 { margin: 15px 0 7px; font-size: 22px; }
     .detail-price { font-size: 20px; font-weight: 850; }
-    .detail-desc {
-      margin: 15px 0;
-      color: var(--muted);
-      line-height: 1.75;
-      font-size: 14px;
-      white-space: pre-line;
-    }
-    .detail-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 16px;
-    }
-    .action-btn {
-      min-height: 50px;
-      border-radius: 15px;
-      border: 1px solid var(--line);
-      color: var(--text);
-      background: var(--soft);
-      font-weight: 700;
-    }
-    .action-btn.primary {
-      border: 0;
-      color: var(--accent-text);
-      background: var(--accent);
-    }
+    .detail-desc { margin: 15px 0; color: var(--muted); line-height: 1.75; font-size: 14px; white-space: pre-line; }
+    .detail-actions, .consult-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+    .action-btn { min-height: 50px; border-radius: 15px; border: 1px solid var(--line); color: var(--text); background: var(--soft); font-weight: 700; }
+    .action-btn.primary { border: 0; color: var(--accent-text); background: var(--accent); }
     .action-btn.full { grid-column: 1 / -1; }
-
-    .pick-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 13px 0;
-      border-bottom: 1px solid var(--line);
-    }
+    .pick-row { display: flex; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); }
     .pick-row h4 { margin: 0 0 5px; font-size: 14px; }
     .pick-row p { margin: 0; color: var(--muted); font-size: 12px; }
-    .remove-btn {
-      border: 0;
-      color: #fca5a5;
-      background: transparent;
-    }
-    .consult-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 18px;
-    }
+    .remove-btn { border: 0; color: #fca5a5; background: transparent; }
 
-    .toast {
-      position: fixed;
-      z-index: 100;
-      left: 50%;
-      top: calc(18px + env(safe-area-inset-top));
-      transform: translate(-50%, -18px);
-      opacity: 0;
-      pointer-events: none;
-      padding: 11px 15px;
-      border-radius: 13px;
-      color: #fff;
-      background: rgba(15,23,42,.95);
-      transition: .2s ease;
-      box-shadow: var(--shadow);
-      font-size: 13px;
-    }
+    .toast { position: fixed; z-index: 100; left: 50%; top: calc(18px + env(safe-area-inset-top)); transform: translate(-50%, -18px); opacity: 0; pointer-events: none; padding: 11px 15px; border-radius: 13px; color: #fff; background: rgba(15,23,42,.95); transition: .2s ease; box-shadow: var(--shadow); font-size: 13px; }
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
     @media (max-width: 390px) {
       .products { grid-template-columns: 1fr; }
       .product p { min-height: 0; }
+      .quick-link span { font-size: 10px; }
     }
   </style>
 </head>
@@ -384,9 +125,9 @@
   <main class="app">
     <header class="topbar">
       <div class="brand">
-        <div class="logo" id="storeLogo">❄️</div>
+        <div class="logo" id="storeLogo">🥩</div>
         <div>
-          <h1 id="storeName">ice_store</h1>
+          <h1 id="storeName">天津本地鲜肉精选</h1>
           <p id="hello">正在连接 Telegram…</p>
         </div>
       </div>
@@ -394,9 +135,15 @@
     </header>
 
     <section class="hero">
-      <small id="heroTag">全部商品均可咨询</small>
-      <h2 id="heroTitle">先浏览，再选择</h2>
-      <p id="heroText">查看全部商品与服务，选中感兴趣的内容后，一键分享或联系客服咨询。</p>
+      <small id="heroTag">天津本地 · 商品展示与咨询</small>
+      <h2 id="heroTitle">先浏览，再选品</h2>
+      <p id="heroText">查看全部鲜肉与生鲜商品，选择感兴趣的内容后，可一键分享或联系官方客服咨询实时价格、库存和配送。</p>
+    </section>
+
+    <section class="quick-links" aria-label="官方入口">
+      <button class="quick-link" id="serviceLink"><b>🤖</b><span>咨询客服</span></button>
+      <button class="quick-link" id="channelLink"><b>📢</b><span>展示频道</span></button>
+      <button class="quick-link" id="groupLink"><b>👥</b><span>用户交流群</span></button>
     </section>
 
     <div class="section-title">
@@ -411,23 +158,23 @@
 
     <nav class="tabs" id="tabs" aria-label="商品分类"></nav>
     <section class="products" id="products"></section>
+
+    <div class="section-title"><h3>服务说明</h3><span>咨询前请阅读</span></div>
+    <div class="info-card"><div class="emoji">📦</div><div><h4>价格与库存实时确认</h4><p>页面用于商品浏览和选品。具体价格、重量、库存和配送时间，请以官方客服确认的信息为准。</p></div></div>
+    <div class="info-card"><div class="emoji">🚚</div><div><h4>正规支付与配送</h4><p>支付、配送或到店自取方式由双方确认。请准确提供收货信息，冷鲜商品请及时接收并检查。</p></div></div>
+    <div class="info-card"><div class="emoji">✅</div><div><h4>售后保障</h4><p>如出现缺少、损坏或规格不符等明确问题，请保留照片并及时联系官方客服处理。</p></div></div>
+    <div class="info-card"><div class="emoji">⚠️</div><div><h4>防骗提醒</h4><p>唯一客服：@TJNo1_bot。展示频道：@TJzhurou。交流群：@TJNo1_group。请核对完整拼写，不要向陌生账号转账或点击来源不明的链接。</p></div></div>
   </main>
 
   <div class="selected-bar" id="selectedBar">
-    <div>
-      <b id="selectedCount">已选 0 项</b>
-      <span>打开清单后分享或咨询</span>
-    </div>
+    <div><b id="selectedCount">已选 0 项</b><span>打开清单后分享或咨询</span></div>
     <button id="openSelectedBtn">查看选品</button>
   </div>
 
   <div class="overlay" id="detailOverlay" role="dialog" aria-modal="true">
     <section class="sheet detail">
       <div class="handle"></div>
-      <div class="sheet-head">
-        <h3>商品详情</h3>
-        <button class="close-btn" data-close="detailOverlay">×</button>
-      </div>
+      <div class="sheet-head"><h3>商品详情</h3><button class="close-btn" data-close="detailOverlay">×</button></div>
       <div class="detail-icon" id="detailIcon"></div>
       <h2 id="detailName"></h2>
       <div class="detail-price" id="detailPrice"></div>
@@ -443,10 +190,7 @@
   <div class="overlay" id="selectedOverlay" role="dialog" aria-modal="true">
     <section class="sheet">
       <div class="handle"></div>
-      <div class="sheet-head">
-        <h3>我的选品</h3>
-        <button class="close-btn" data-close="selectedOverlay">×</button>
-      </div>
+      <div class="sheet-head"><h3>我的选品</h3><button class="close-btn" data-close="selectedOverlay">×</button></div>
       <div id="selectedItems"></div>
       <div class="consult-actions">
         <button class="action-btn" id="shareSelectedBtn">分享选品</button>
@@ -458,89 +202,28 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    /* =========================================================
-       最常修改的内容都集中在这里：店铺资料、客服和商品。
-       ========================================================= */
+    /* 最常修改的内容：店铺资料、官方账号和商品。 */
     const STORE = {
-      name: "ice_store",
-      logo: "❄️",
-      botUsername: "TJ_ice_CS_bot",
-      heroTag: "全部商品均可咨询",
-      heroTitle: "先浏览，再选择",
-      heroText: "查看全部商品与服务，选中感兴趣的内容后，一键分享或联系客服咨询。"
+      name: "天津本地鲜肉精选",
+      logo: "🥩",
+      botUsername: "TJNo1_bot",
+      channelUsername: "TJzhurou",
+      groupUsername: "TJNo1_group",
+      heroTag: "天津本地 · 商品展示与咨询",
+      heroTitle: "先浏览，再选品",
+      heroText: "查看全部鲜肉与生鲜商品，选择感兴趣的内容后，可一键分享或联系官方客服咨询实时价格、库存和配送。",
+      pageUrl: "https://chili888.github.io/Web-app/"
     };
 
     const PRODUCTS = [
-      {
-        id: "premium-3",
-        category: "Premium",
-        icon: "💎",
-        name: "Telegram Premium 3个月",
-        price: "$13.99",
-        badge: "热门",
-        summary: "适合短期体验，可先查看详情再咨询。",
-        description: "Telegram Premium 3个月方案。\n\n这里可以填写完整说明、适用条件、交付方式、注意事项和其他需要展示的信息。"
-      },
-      {
-        id: "premium-6",
-        category: "Premium",
-        icon: "👑",
-        name: "Telegram Premium 6个月",
-        price: "$19.99",
-        badge: "推荐",
-        summary: "中长期使用方案，支持分享给好友查看。",
-        description: "Telegram Premium 6个月方案。\n\n后续可以随时修改名称、价格、图片、介绍和分类。"
-      },
-      {
-        id: "premium-12",
-        category: "Premium",
-        icon: "🏆",
-        name: "Telegram Premium 12个月",
-        price: "$35.99",
-        badge: "长期",
-        summary: "适合长期使用，详情以咨询确认为准。",
-        description: "Telegram Premium 12个月方案。\n\n商品页用于展示与咨询，不在网页内直接完成付款。"
-      },
-      {
-        id: "stars-100",
-        category: "Stars",
-        icon: "⭐",
-        name: "Telegram Stars 100",
-        price: "$1.99",
-        badge: "入门",
-        summary: "小额 Stars 商品展示模板。",
-        description: "Telegram Stars 100。\n\n可以在这里补充实时价格、到账时间和使用说明。"
-      },
-      {
-        id: "stars-500",
-        category: "Stars",
-        icon: "🌟",
-        name: "Telegram Stars 500",
-        price: "$8.99",
-        badge: "常用",
-        summary: "常用数量，可加入选品清单一起咨询。",
-        description: "Telegram Stars 500。\n\n客户可以先加入选品，再统一分享或咨询。"
-      },
-      {
-        id: "stars-1000",
-        category: "Stars",
-        icon: "✨",
-        name: "Telegram Stars 1000",
-        price: "$16.99",
-        badge: "套餐",
-        summary: "较大数量的展示示例。",
-        description: "Telegram Stars 1000。\n\n正式使用时直接替换成你的真实商品内容即可。"
-      },
-      {
-        id: "custom",
-        category: "其他",
-        icon: "🧩",
-        name: "其他需求",
-        price: "咨询报价",
-        badge: "咨询",
-        summary: "没有找到需要的内容，可以直接联系咨询。",
-        description: "其他自定义需求。\n\n点击咨询按钮后，会复制商品信息并打开客服机器人。"
-      }
+      { id: "pork-fresh", category: "猪肉", icon: "🥩", name: "精选鲜猪肉", price: "实时询价", badge: "本地精选", summary: "日常烹饪常用部位，规格与重量可咨询。", description: "精选鲜猪肉展示模板。\n\n可在这里填写具体部位、重量规格、产地、保存方式、配送范围和注意事项。价格与库存请咨询客服确认。" },
+      { id: "pork-belly", category: "猪肉", icon: "🍖", name: "精品五花肉", price: "实时询价", badge: "常用", summary: "适合红烧、煎烤等多种做法。", description: "精品五花肉展示模板。\n\n后续可替换成真实图片、重量规格、肥瘦比例、价格及配送说明。" },
+      { id: "ribs", category: "猪肉", icon: "🦴", name: "新鲜排骨", price: "实时询价", badge: "推荐", summary: "适合炖汤、红烧或蒸制。", description: "新鲜排骨展示模板。\n\n具体切法、份量、库存和到货时间请通过官方客服确认。" },
+      { id: "beef", category: "牛羊肉", icon: "🐂", name: "精选牛肉", price: "实时询价", badge: "精选", summary: "不同部位可选，适合煎炒炖煮。", description: "精选牛肉展示模板。\n\n可展示牛腩、牛腱、牛排等不同部位，并补充产地、等级、规格和保存方式。" },
+      { id: "lamb", category: "牛羊肉", icon: "🐑", name: "精选羊肉", price: "实时询价", badge: "时令", summary: "适合涮煮、烧烤和炖汤。", description: "精选羊肉展示模板。\n\n可补充羊腿、羊排、羊肉卷等实际商品信息。" },
+      { id: "chicken", category: "禽类", icon: "🐔", name: "新鲜鸡肉", price: "实时询价", badge: "家常", summary: "整鸡及常用分割部位均可展示。", description: "新鲜鸡肉展示模板。\n\n可填写整鸡、鸡腿、鸡翅等规格，以及处理方式和配送说明。" },
+      { id: "combo", category: "组合套餐", icon: "🧺", name: "家庭鲜肉组合", price: "咨询搭配", badge: "组合", summary: "按家庭人数和烹饪需求搭配。", description: "家庭鲜肉组合展示模板。\n\n可根据预算、人数和菜品需求，由客服协助搭配猪肉、牛羊肉或禽类商品。" },
+      { id: "custom", category: "其他", icon: "💬", name: "其他生鲜需求", price: "咨询报价", badge: "人工咨询", summary: "没有找到需要的商品，可直接联系咨询。", description: "其他合法生鲜商品或特殊规格需求。\n\n点击咨询后，会复制当前商品信息并打开官方客服机器人。" }
     ];
 
     const tg = window.Telegram?.WebApp;
@@ -554,10 +237,10 @@
       category: "全部",
       search: "",
       currentProduct: null,
-      selected: JSON.parse(localStorage.getItem("ice_store_selected") || "[]")
+      selected: JSON.parse(localStorage.getItem("tianjin_meat_selected") || "[]")
     };
 
-    const $ = (id) => document.getElementById(id);
+    const $ = id => document.getElementById(id);
     const user = tg?.initDataUnsafe?.user;
 
     $("storeName").textContent = STORE.name;
@@ -580,13 +263,11 @@
     }
 
     function saveSelected() {
-      localStorage.setItem("ice_store_selected", JSON.stringify(state.selected));
+      localStorage.setItem("tianjin_meat_selected", JSON.stringify(state.selected));
       renderSelectedBar();
     }
 
-    function isSelected(id) {
-      return state.selected.includes(id);
-    }
+    function isSelected(id) { return state.selected.includes(id); }
 
     function toggleSelected(id) {
       if (isSelected(id)) {
@@ -604,10 +285,7 @@
 
     function renderTabs() {
       const categories = ["全部", ...new Set(PRODUCTS.map(p => p.category))];
-      $("tabs").innerHTML = categories.map(category => `
-        <button class="tab ${state.category === category ? "active" : ""}" data-category="${category}">${category}</button>
-      `).join("");
-
+      $("tabs").innerHTML = categories.map(category => `<button class="tab ${state.category === category ? "active" : ""}" data-category="${category}">${category}</button>`).join("");
       $("tabs").querySelectorAll(".tab").forEach(button => {
         button.addEventListener("click", () => {
           state.category = button.dataset.category;
@@ -630,12 +308,10 @@
     function renderProducts() {
       const list = filteredProducts();
       $("resultCount").textContent = `${list.length} 项`;
-
       if (!list.length) {
-        $("products").innerHTML = '<div class="empty">没有找到相关内容</div>';
+        $("products").innerHTML = '<div class="empty">没有找到相关商品</div>';
         return;
       }
-
       $("products").innerHTML = list.map(product => `
         <article class="product">
           <div class="product-icon">${product.icon}</div>
@@ -646,12 +322,8 @@
             <span class="price">${product.price}</span>
             <button class="view-btn" data-view="${product.id}">${isSelected(product.id) ? "已选 · 查看" : "查看详情"}</button>
           </div>
-        </article>
-      `).join("");
-
-      $("products").querySelectorAll("[data-view]").forEach(button => {
-        button.addEventListener("click", () => openDetail(button.dataset.view));
-      });
+        </article>`).join("");
+      $("products").querySelectorAll("[data-view]").forEach(button => button.addEventListener("click", () => openDetail(button.dataset.view)));
     }
 
     function openDetail(id) {
@@ -672,10 +344,6 @@
       $("togglePickBtn").textContent = isSelected(state.currentProduct.id) ? "移出选品" : "加入选品";
     }
 
-    function closeOverlay(id) {
-      $(id).classList.remove("show");
-    }
-
     function renderSelectedBar() {
       const count = state.selected.length;
       $("selectedCount").textContent = `已选 ${count} 项`;
@@ -690,14 +358,9 @@
       const list = selectedProducts();
       $("selectedItems").innerHTML = list.length ? list.map(product => `
         <div class="pick-row">
-          <div>
-            <h4>${product.icon} ${product.name}</h4>
-            <p>${product.price}</p>
-          </div>
+          <div><h4>${product.icon} ${product.name}</h4><p>${product.price}</p></div>
           <button class="remove-btn" data-remove="${product.id}">移除</button>
-        </div>
-      `).join("") : '<div class="empty">还没有选择商品</div>';
-
+        </div>`).join("") : '<div class="empty">还没有选择商品</div>';
       $("selectedItems").querySelectorAll("[data-remove]").forEach(button => {
         button.addEventListener("click", () => {
           toggleSelected(button.dataset.remove);
@@ -707,20 +370,17 @@
     }
 
     function productText(product) {
-      return `【${STORE.name} 商品咨询】\n商品：${product.name}\n价格：${product.price}\n分类：${product.category}\n页面：https://chili888.github.io/Web-app/`;
+      return `【${STORE.name} 商品咨询】\n商品：${product.name}\n价格：${product.price}\n分类：${product.category}\n页面：${STORE.pageUrl}`;
     }
 
     function selectedText() {
-      const list = selectedProducts();
-      const rows = list.map((p, index) => `${index + 1}. ${p.name}（${p.price}）`).join("\n");
-      return `【${STORE.name} 选品咨询】\n${rows}\n\n我想了解以上商品，请联系我。`;
+      const rows = selectedProducts().map((p, index) => `${index + 1}. ${p.name}（${p.price}）`).join("\n");
+      return `【${STORE.name} 选品咨询】\n${rows}\n\n我想了解以上商品的实时价格、库存和配送。`;
     }
 
     async function copyText(text) {
       try {
         await navigator.clipboard.writeText(text);
-        showToast("内容已复制");
-        return true;
       } catch (_) {
         const textarea = document.createElement("textarea");
         textarea.value = text;
@@ -728,54 +388,41 @@
         textarea.select();
         document.execCommand("copy");
         textarea.remove();
-        showToast("内容已复制");
-        return true;
       }
+      showToast("咨询内容已复制");
     }
 
-    function openBot() {
-      const url = `https://t.me/${STORE.botUsername}`;
+    function openTelegram(username) {
+      const url = `https://t.me/${username}`;
       if (tg?.openTelegramLink) tg.openTelegramLink(url);
       else window.open(url, "_blank");
     }
 
     async function consult(text) {
       await copyText(text);
-      setTimeout(openBot, 350);
+      setTimeout(() => openTelegram(STORE.botUsername), 350);
     }
 
     function shareText(text) {
-      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent("https://chili888.github.io/Web-app/")}&text=${encodeURIComponent(text)}`;
+      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(STORE.pageUrl)}&text=${encodeURIComponent(text)}`;
       if (tg?.openTelegramLink) tg.openTelegramLink(shareUrl);
       else window.open(shareUrl, "_blank");
     }
 
-    $("searchInput").addEventListener("input", event => {
-      state.search = event.target.value;
-      renderProducts();
-    });
-
+    $("searchInput").addEventListener("input", event => { state.search = event.target.value; renderProducts(); });
     $("topConsultBtn").addEventListener("click", () => consult(`你好，我正在浏览 ${STORE.name}，想咨询商品。`));
+    $("serviceLink").addEventListener("click", () => openTelegram(STORE.botUsername));
+    $("channelLink").addEventListener("click", () => openTelegram(STORE.channelUsername));
+    $("groupLink").addEventListener("click", () => openTelegram(STORE.groupUsername));
     $("togglePickBtn").addEventListener("click", () => state.currentProduct && toggleSelected(state.currentProduct.id));
     $("shareProductBtn").addEventListener("click", () => state.currentProduct && shareText(productText(state.currentProduct)));
     $("consultProductBtn").addEventListener("click", () => state.currentProduct && consult(productText(state.currentProduct)));
-
-    $("openSelectedBtn").addEventListener("click", () => {
-      renderSelectedSheet();
-      $("selectedOverlay").classList.add("show");
-    });
+    $("openSelectedBtn").addEventListener("click", () => { renderSelectedSheet(); $("selectedOverlay").classList.add("show"); });
     $("shareSelectedBtn").addEventListener("click", () => shareText(selectedText()));
     $("consultSelectedBtn").addEventListener("click", () => consult(selectedText()));
 
-    document.querySelectorAll("[data-close]").forEach(button => {
-      button.addEventListener("click", () => closeOverlay(button.dataset.close));
-    });
-
-    document.querySelectorAll(".overlay").forEach(overlay => {
-      overlay.addEventListener("click", event => {
-        if (event.target === overlay) overlay.classList.remove("show");
-      });
-    });
+    document.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", () => $(button.dataset.close).classList.remove("show")));
+    document.querySelectorAll(".overlay").forEach(overlay => overlay.addEventListener("click", event => { if (event.target === overlay) overlay.classList.remove("show"); }));
 
     renderTabs();
     renderProducts();
