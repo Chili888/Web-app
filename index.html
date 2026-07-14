@@ -2,14 +2,14 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes" />
   <meta name="theme-color" content="#0f172a" />
   <title>国内精品肉铺</title>
-  <link rel="stylesheet" href="./assets/style.css?v=20260715-1" />
+  <link rel="stylesheet" href="./assets/style.css?v=20260715-2" />
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="./config.js"></script>
-  <script defer src="./assets/app.js"></script>
+  <script defer src="./assets/app.js?v=20260715-2"></script>
 </head>
 <body>
   <header class="top">
@@ -80,9 +80,15 @@
     <div class="sheet">
       <div class="sheetTop">
         <h2 id="detailName"></h2>
-        <button class="close" type="button" data-action="close-detail">×</button>
+        <button class="close" type="button" data-action="close-detail" aria-label="关闭商品详情">×</button>
       </div>
-      <div id="detailPic" class="sheetPic"></div>
+
+      <button id="detailMainImage" class="sheetPic detail-main-image" type="button" data-action="open-lightbox" aria-label="查看高清商品图片">
+        <span id="detailPic" class="detail-pic-content"></span>
+        <span id="zoomHint" class="zoom-hint">点击查看高清图</span>
+      </button>
+      <div id="detailThumbs" class="detail-thumbs" hidden></div>
+
       <div id="detailMeta" class="meta"></div>
       <div id="detailPrice" class="price"></div>
       <p id="detailDesc"></p>
@@ -97,7 +103,7 @@
     <div class="sheet">
       <div class="sheetTop">
         <h2>选品清单</h2>
-        <button class="close" type="button" data-action="close-selected">×</button>
+        <button class="close" type="button" data-action="close-selected" aria-label="关闭选品清单">×</button>
       </div>
       <div id="selectedList" class="list"></div>
       <div class="sheetBtns">
@@ -105,6 +111,21 @@
         <button class="consult" type="button" data-action="consult-selected">复制并咨询</button>
       </div>
     </div>
+  </div>
+
+  <div id="imageLightbox" class="lightbox" hidden>
+    <div class="lightbox-top">
+      <span id="lightboxCount" class="lightbox-count"></span>
+      <div class="lightbox-actions">
+        <a id="originalImageLink" class="lightbox-original" href="#" target="_blank" rel="noopener">打开原图</a>
+        <button class="lightbox-close" type="button" data-action="close-lightbox" aria-label="关闭高清图片">×</button>
+      </div>
+    </div>
+    <button id="lightboxPrevious" class="lightbox-nav previous" type="button" data-action="previous-image" aria-label="上一张">‹</button>
+    <div class="lightbox-stage">
+      <img id="lightboxImage" alt="商品高清图片" />
+    </div>
+    <button id="lightboxNext" class="lightbox-nav next" type="button" data-action="next-image" aria-label="下一张">›</button>
   </div>
 
   <div id="toast" class="toast"></div>
