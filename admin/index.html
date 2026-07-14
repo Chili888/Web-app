@@ -5,34 +5,23 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes" />
   <meta name="theme-color" content="#0f172a" />
   <title>肉铺管理后台</title>
-  <link rel="stylesheet" href="./admin.css?v=20260715-2" />
+  <link rel="stylesheet" href="./admin.css?v=20260715-3" />
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="../config.js"></script>
-  <script defer src="./admin.js?v=20260715-2"></script>
+  <script defer src="./admin.js?v=20260715-3"></script>
 </head>
 <body>
   <div id="setupRequired" class="setup" hidden>
-    <div class="setup-card">
-      <div class="brand-mark">⚙️</div>
-      <h1>后台尚未连接</h1>
-      <p>请先创建 Supabase 项目，并把 Project URL 和 anon/publishable key 填入仓库根目录的 <code>config.js</code>。</p>
-      <a href="https://github.com/Chili888/Web-app/blob/main/%E5%90%8E%E5%8F%B0%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E.md" target="_blank" rel="noopener">查看配置说明</a>
-    </div>
+    <div class="setup-card"><div class="brand-mark">⚙️</div><h1>后台尚未连接</h1><p>请先配置 Supabase 项目地址和 publishable key。</p></div>
   </div>
 
   <section id="loginView" class="login-shell" hidden>
     <form id="loginForm" class="login-card">
       <div class="brand-mark">🥩</div>
       <h1>肉铺管理后台</h1>
-      <p>使用 Supabase 管理员邮箱和密码登录。</p>
-      <label>
-        邮箱
-        <input id="loginEmail" type="email" autocomplete="username" required placeholder="admin@example.com" />
-      </label>
-      <label>
-        密码
-        <input id="loginPassword" type="password" autocomplete="current-password" required placeholder="请输入密码" />
-      </label>
+      <p>登录后管理商品、图片、上下架与店铺资料。</p>
+      <label>邮箱<input id="loginEmail" type="email" autocomplete="username" required placeholder="admin@example.com" /></label>
+      <label>密码<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="请输入密码" /></label>
       <button id="loginButton" class="primary" type="submit">登录后台</button>
       <div id="loginError" class="error"></div>
     </form>
@@ -40,9 +29,8 @@
 
   <div id="unauthorizedView" class="setup" hidden>
     <div class="setup-card">
-      <div class="brand-mark">🔒</div>
-      <h1>账号没有管理员权限</h1>
-      <p>当前账号已经登录，但尚未加入 <code>admin_profiles</code>。请按配置说明执行管理员授权 SQL。</p>
+      <div class="brand-mark">🔒</div><h1>账号没有管理员权限</h1>
+      <p>当前账号尚未加入 <code>admin_profiles</code>。</p>
       <p class="user-id">用户 ID：<code id="currentUserId"></code></p>
       <button id="unauthorizedLogout" class="secondary" type="button">退出登录</button>
     </div>
@@ -50,11 +38,9 @@
 
   <div id="appView" class="app" hidden>
     <header class="app-header">
-      <div>
-        <div class="eyebrow">国内精品肉铺</div>
-        <h1>管理后台</h1>
-      </div>
+      <div class="header-brand"><div class="header-logo">🥩</div><div><div class="eyebrow">国内精品肉铺</div><h1>管理后台</h1></div></div>
       <div class="header-actions">
+        <span id="adminEmail" class="admin-email"></span>
         <a class="secondary link-button" href="../" target="_blank" rel="noopener">查看前台</a>
         <button id="logoutButton" class="secondary" type="button">退出</button>
       </div>
@@ -62,67 +48,87 @@
 
     <main class="layout">
       <aside class="sidebar">
-        <button class="nav active" type="button" data-tab="products">商品管理</button>
-        <button class="nav" type="button" data-tab="settings">店铺设置</button>
+        <button class="nav active" type="button" data-tab="products"><span>▦</span>商品管理</button>
+        <button class="nav" type="button" data-tab="settings"><span>⚙</span>店铺设置</button>
+        <button class="nav" type="button" data-tab="data"><span>⇅</span>数据工具</button>
       </aside>
 
       <section class="content">
         <div id="productsTab" class="tab-panel">
           <div class="panel-head">
-            <div>
-              <h2>商品管理</h2>
-              <p>新增、修改、上下架及删除商品。</p>
-            </div>
+            <div><span class="eyebrow">商品中心</span><h2>商品管理</h2><p>支持搜索筛选、批量操作、复制商品、快速上下架与排序。</p></div>
             <button id="newProductButton" class="primary" type="button">＋ 新增商品</button>
           </div>
 
-          <div id="multiImageUpgradeNotice" class="upgrade-notice" hidden>
-            多图功能尚未启用。请在 Supabase SQL Editor 运行仓库中的 <code>supabase-multi-images.sql</code>。
-          </div>
+          <div id="multiImageUpgradeNotice" class="upgrade-notice" hidden>多图功能尚未启用，请运行 <code>supabase-multi-images.sql</code>。</div>
 
-          <div class="stats">
+          <div class="stats stats-five">
             <div><span>全部商品</span><b id="statTotal">0</b></div>
             <div><span>已上架</span><b id="statActive">0</b></div>
             <div><span>已下架</span><b id="statInactive">0</b></div>
+            <div><span>推荐商品</span><b id="statFeatured">0</b></div>
+            <div><span>缺少图片</span><b id="statNoImage">0</b></div>
           </div>
 
-          <div class="toolbar">
-            <input id="productSearch" type="search" placeholder="搜索商品或分类" />
+          <div class="toolbar toolbar-rich">
+            <input id="productSearch" type="search" placeholder="搜索商品名称、分类、价格或库存" />
+            <select id="statusFilter"><option value="all">全部状态</option><option value="active">已上架</option><option value="inactive">已下架</option><option value="featured">推荐商品</option><option value="no-image">缺少图片</option></select>
+            <select id="categoryFilter"><option value="all">全部分类</option></select>
+            <select id="adminSort"><option value="order">显示顺序</option><option value="latest">最新添加</option><option value="name">名称排序</option><option value="updated">最近更新</option></select>
             <button id="refreshProducts" class="secondary" type="button">刷新</button>
           </div>
 
-          <div id="productList" class="product-list">
-            <div class="empty">正在加载商品…</div>
-          </div>
-        </div>
-
-        <div id="settingsTab" class="tab-panel" hidden>
-          <div class="panel-head">
-            <div>
-              <h2>店铺设置</h2>
-              <p>修改前台标题、官方账号和购买说明。</p>
+          <div id="bulkBar" class="bulk-bar" hidden>
+            <label class="select-all"><input id="selectAllProducts" type="checkbox" /> 全选当前结果</label>
+            <span id="selectedCount">已选 0 项</span>
+            <div class="bulk-actions">
+              <button type="button" data-bulk-action="activate">批量上架</button>
+              <button type="button" data-bulk-action="deactivate">批量下架</button>
+              <button type="button" data-bulk-action="feature">设为推荐</button>
+              <button type="button" data-bulk-action="unfeature">取消推荐</button>
+              <button class="danger-text" type="button" data-bulk-action="delete">批量删除</button>
             </div>
           </div>
 
+          <div id="productList" class="product-list"><div class="empty">正在加载商品…</div></div>
+        </div>
+
+        <div id="settingsTab" class="tab-panel" hidden>
+          <div class="panel-head"><div><span class="eyebrow">店铺资料</span><h2>店铺设置</h2><p>修改后前台会自动读取最新内容。</p></div></div>
           <form id="settingsForm" class="form-card">
+            <div class="form-section-title">基础资料</div>
             <div class="form-grid">
               <label>店铺名称<input name="shop_name" required /></label>
               <label>店铺副标题<input name="shop_subtitle" required /></label>
               <label>首页标签<input name="hero_tag" required /></label>
               <label>首页主标题<input name="hero_title" required /></label>
               <label class="full">首页介绍<textarea name="hero_text" rows="3" required></textarea></label>
-              <label>客服账号<input name="bot_username" placeholder="TJ_ice_CS_bot" required /></label>
-              <label>频道账号<input name="channel_username" placeholder="TJ_NO1_ice" required /></label>
-              <label>群组账号<input name="group_username" placeholder="TJ_ice_Group" required /></label>
+            </div>
+            <div class="form-section-title">官方账号</div>
+            <div class="form-grid">
+              <label>客服账号<input name="bot_username" required /></label>
+              <label>频道账号<input name="channel_username" required /></label>
+              <label>群组账号<input name="group_username" required /></label>
+            </div>
+            <div class="form-section-title">购买说明</div>
+            <div class="form-grid">
               <label class="full">价格说明<textarea name="price_notice" rows="2" required></textarea></label>
               <label class="full">库存说明<textarea name="stock_notice" rows="2" required></textarea></label>
               <label class="full">配送售后<textarea name="delivery_notice" rows="2" required></textarea></label>
               <label class="full">防骗提醒<textarea name="anti_fraud_notice" rows="2" required></textarea></label>
             </div>
-            <div class="form-actions">
-              <button id="saveSettingsButton" class="primary" type="submit">保存店铺设置</button>
-            </div>
+            <div class="form-actions"><button id="saveSettingsButton" class="primary" type="submit">保存店铺设置</button></div>
           </form>
+        </div>
+
+        <div id="dataTab" class="tab-panel" hidden>
+          <div class="panel-head"><div><span class="eyebrow">备份与迁移</span><h2>数据工具</h2><p>导出完整备份、商品 CSV，或从 JSON 恢复数据。</p></div></div>
+          <div class="tool-grid">
+            <section class="tool-card"><div class="tool-icon">↓</div><h3>完整 JSON 备份</h3><p>包含全部商品、图片链接和店铺设置。</p><button id="exportJsonButton" class="primary" type="button">导出 JSON</button></section>
+            <section class="tool-card"><div class="tool-icon">表</div><h3>商品 CSV</h3><p>便于使用 Excel 或表格软件查看商品资料。</p><button id="exportCsvButton" class="secondary" type="button">导出 CSV</button></section>
+            <section class="tool-card"><div class="tool-icon">↑</div><h3>导入 JSON 备份</h3><p>导入前会要求确认；相同 ID 的商品将被更新。</p><label class="file-button">选择 JSON 文件<input id="importJsonInput" type="file" accept="application/json,.json" /></label></section>
+          </div>
+          <div class="data-note"><b>建议：</b>每次大批量修改商品前先导出一次完整备份。</div>
         </div>
       </section>
     </main>
@@ -130,42 +136,25 @@
 
   <div id="productModal" class="modal" hidden>
     <div class="modal-card">
-      <div class="modal-head">
-        <div>
-          <div class="eyebrow">商品资料</div>
-          <h2 id="productModalTitle">新增商品</h2>
-        </div>
-        <button id="closeProductModal" class="icon-button" type="button">×</button>
-      </div>
-
+      <div class="modal-head"><div><div class="eyebrow">商品资料</div><h2 id="productModalTitle">新增商品</h2></div><button id="closeProductModal" class="icon-button" type="button">×</button></div>
       <form id="productForm">
         <input type="hidden" name="id" />
-
         <div class="form-grid">
           <label>商品名称<input name="name" required /></label>
-          <label>商品分类<input name="category" required placeholder="猪肉 / 精品 / 组合" /></label>
+          <label>商品分类<input name="category" list="categoryOptions" required placeholder="猪肉 / 精品 / 组合" /><datalist id="categoryOptions"></datalist></label>
           <label>价格文字<input name="price_text" required placeholder="实时询价" /></label>
           <label>库存状态<input name="stock_text" required placeholder="当日库存" /></label>
           <label>备用图标<input name="emoji" maxlength="8" placeholder="🥩" /></label>
           <label>显示顺序<input name="sort_order" type="number" value="0" /></label>
-          <label class="full">商品介绍<textarea name="description" rows="4"></textarea></label>
-
-          <label class="full">商品图片（最多 10 张）
-            <input id="productImage" name="image_files" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" />
-            <small>可一次选择多张；第一张是商品封面。每张不超过 5 MB，可设为主图或移除。</small>
-          </label>
+          <label class="full">商品介绍<textarea name="description" rows="5"></textarea></label>
+          <label class="full">商品图片（最多 10 张）<input id="productImage" name="image_files" type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif" /><small>第一张为主图。可调整顺序、设为主图或移除；每张不超过 5 MB。</small></label>
           <div id="imagePreview" class="image-preview-grid full"></div>
-
           <label class="check"><input name="is_active" type="checkbox" checked /> 上架显示</label>
           <label class="check"><input name="is_featured" type="checkbox" /> 推荐商品</label>
         </div>
-
         <div class="form-actions split">
           <button id="deleteProductButton" class="danger" type="button" hidden>删除商品</button>
-          <div class="right-actions">
-            <button id="cancelProductButton" class="secondary" type="button">取消</button>
-            <button id="saveProductButton" class="primary" type="submit">保存商品</button>
-          </div>
+          <div class="right-actions"><button id="cancelProductButton" class="secondary" type="button">取消</button><button id="saveProductButton" class="primary" type="submit">保存商品</button></div>
         </div>
       </form>
     </div>
