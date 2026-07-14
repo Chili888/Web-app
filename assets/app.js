@@ -18,14 +18,10 @@
   };
 
   const DEMO_PRODUCTS = [
-    {id:1,name:"高品质猪肉",category:"猪肉",emoji:"🥩",price_text:"实时询价",stock_text:"当日库存",description:"高品质猪肉占位商品，可替换为具体部位、重量、产地和规格说明。",image_url:"",image_urls:[],is_active:true,sort_order:10},
-    {id:2,name:"XX1",category:"猪肉",emoji:"🍖",price_text:"实时询价",stock_text:"咨询库存",description:"XX1 占位模板，可在后台修改商品名称、图片、分类、价格与详情。",image_url:"",image_urls:[],is_active:true,sort_order:20},
-    {id:3,name:"XX2",category:"精品",emoji:"🥓",price_text:"咨询报价",stock_text:"当日库存",description:"XX2 占位模板，适合展示精品肉类或组合商品。",image_url:"",image_urls:[],is_active:true,sort_order:30},
-    {id:4,name:"XX3",category:"精品",emoji:"🍗",price_text:"咨询报价",stock_text:"咨询库存",description:"XX3 占位模板，后续可替换为正式商品资料。",image_url:"",image_urls:[],is_active:true,sort_order:40},
-    {id:5,name:"家庭鲜肉组合",category:"组合",emoji:"🧺",price_text:"套餐询价",stock_text:"可预订",description:"家庭组合占位商品，可填写具体搭配、重量和配送范围。",image_url:"",image_urls:[],is_active:true,sort_order:50},
-    {id:6,name:"精选排骨",category:"猪肉",emoji:"🍖",price_text:"实时询价",stock_text:"当日库存",description:"精选排骨占位商品，实际价格和规格请联系官方客服。",image_url:"",image_urls:[],is_active:true,sort_order:60},
-    {id:7,name:"精品牛肉",category:"牛肉",emoji:"🥩",price_text:"实时询价",stock_text:"咨询库存",description:"精品牛肉占位商品，可补充部位、等级和包装规格。",image_url:"",image_urls:[],is_active:true,sort_order:70},
-    {id:8,name:"其他生鲜需求",category:"其他",emoji:"🛒",price_text:"咨询报价",stock_text:"联系客服",description:"没有找到需要的商品，可将具体需求直接发送给客服。",image_url:"",image_urls:[],is_active:true,sort_order:80}
+    {id:1,name:"高品质猪肉",category:"猪肉",emoji:"🥩",price_text:"实时询价",stock_text:"当日库存",description:"高品质猪肉占位商品，可替换为具体部位、重量、产地和规格说明。",image_url:"",image_urls:[],is_active:true,is_featured:true,sort_order:10},
+    {id:2,name:"XX1",category:"猪肉",emoji:"🍖",price_text:"实时询价",stock_text:"咨询库存",description:"XX1 占位模板，可在后台修改商品名称、图片、分类、价格与详情。",image_url:"",image_urls:[],is_active:true,is_featured:false,sort_order:20},
+    {id:3,name:"XX2",category:"精品",emoji:"🥓",price_text:"咨询报价",stock_text:"当日库存",description:"XX2 占位模板，适合展示精品肉类或组合商品。",image_url:"",image_urls:[],is_active:true,is_featured:true,sort_order:30},
+    {id:4,name:"XX3",category:"精品",emoji:"🍗",price_text:"咨询报价",stock_text:"咨询库存",description:"XX3 占位模板，后续可替换为正式商品资料。",image_url:"",image_urls:[],is_active:true,is_featured:false,sort_order:40}
   ];
 
   const state = {
@@ -33,6 +29,7 @@
     products: [],
     selected: readSelected(),
     activeCategory: "全部",
+    sortMode: "recommended",
     current: null,
     detailImages: [],
     detailImageIndex: 0,
@@ -85,7 +82,14 @@
   }
 
   function bindEvents() {
-    $("search").addEventListener("input", renderProducts);
+    $("search").addEventListener("input", () => {
+      updateSearchClear();
+      renderProducts();
+    });
+    $("sortMode").addEventListener("change", (event) => {
+      state.sortMode = event.currentTarget.value;
+      renderProducts();
+    });
 
     document.addEventListener("click", (event) => {
       const actionElement = event.target.closest("[data-action]");
@@ -94,7 +98,7 @@
         const id = Number(actionElement.dataset.id);
         const index = Number(actionElement.dataset.index);
         const handlers = {
-          "scroll-products": () => $("products").scrollIntoView(),
+          "scroll-products": () => $("products").scrollIntoView({behavior:"smooth"}),
           "open-selected": openSelected,
           "share-selected": shareSelected,
           "consult-selected": consultSelected,
@@ -110,16 +114,15 @@
           "open-lightbox": () => openLightbox(state.detailImageIndex),
           "close-lightbox": closeLightbox,
           "previous-image": () => moveLightbox(-1),
-          "next-image": () => moveLightbox(1)
+          "next-image": () => moveLightbox(1),
+          "clear-search": clearSearch,
+          "back-top": () => window.scrollTo({top:0,behavior:"smooth"})
         };
         handlers[action]?.();
       }
 
       const shade = event.target.closest("[data-close-sheet]");
-      if (shade && event.target === shade) {
-        closeSheet(shade.dataset.closeSheet);
-      }
-
+      if (shade && event.target === shade) closeSheet(shade.dataset.closeSheet);
       if (event.target === $("imageLightbox")) closeLightbox();
     });
 
@@ -142,6 +145,10 @@
       if (Math.abs(delta) < 45) return;
       moveLightbox(delta > 0 ? -1 : 1);
     }, {passive: true});
+
+    window.addEventListener("scroll", () => {
+      $("backTop").classList.toggle("show", window.scrollY > 650);
+    }, {passive:true});
   }
 
   async function loadSettings() {
@@ -150,7 +157,6 @@
       .select("*")
       .eq("id", 1)
       .maybeSingle();
-
     if (error) throw error;
     state.settings = {...DEFAULT_SETTINGS, ...(data || {})};
     applySettings();
@@ -163,10 +169,10 @@
       .eq("is_active", true)
       .order("sort_order", {ascending: true})
       .order("id", {ascending: false});
-
     if (error) throw error;
     state.products = data || [];
     renderCategories();
+    renderFeatured();
     renderProducts();
   }
 
@@ -188,6 +194,7 @@
     state.products = DEMO_PRODUCTS.map((item) => ({...item}));
     applySettings();
     renderCategories();
+    renderFeatured();
     renderProducts();
     const notice = $("modeNotice");
     notice.textContent = message;
@@ -225,14 +232,15 @@
   }
 
   function renderCategories() {
-    $("cats").innerHTML = categories().map((category) => `
-      <button
-        class="cat ${category === state.activeCategory ? "active" : ""}"
-        type="button"
-        data-action="set-category"
-        data-category="${escapeHtml(category)}"
-      >${escapeHtml(category)}</button>
-    `).join("");
+    $("cats").innerHTML = categories().map((category) => {
+      const count = category === "全部"
+        ? state.products.length
+        : state.products.filter((item) => (item.category || "其他") === category).length;
+      return `
+        <button class="cat ${category === state.activeCategory ? "active" : ""}" type="button" data-action="set-category" data-category="${escapeHtml(category)}">
+          <span>${escapeHtml(category)}</span><small>${count}</small>
+        </button>`;
+    }).join("");
   }
 
   function setCategory(category) {
@@ -241,52 +249,72 @@
     renderProducts();
   }
 
+  function renderFeatured() {
+    const featured = state.products.filter((product) => product.is_featured).slice(0, 6);
+    const section = $("featuredSection");
+    if (!featured.length) {
+      section.hidden = true;
+      $("featuredGrid").innerHTML = "";
+      return;
+    }
+    section.hidden = false;
+    $("featuredGrid").innerHTML = featured.map((product) => productCard(product, true)).join("");
+  }
+
   function renderProducts() {
     const query = $("search").value.trim().toLowerCase();
-    const filtered = state.products.filter((product) => {
+    let filtered = state.products.filter((product) => {
       const categoryMatch = state.activeCategory === "全部" || product.category === state.activeCategory;
-      const haystack = `${product.name || ""} ${product.category || ""} ${product.description || ""}`.toLowerCase();
+      const haystack = `${product.name || ""} ${product.category || ""} ${product.description || ""} ${product.price_text || ""} ${product.stock_text || ""}`.toLowerCase();
       return categoryMatch && haystack.includes(query);
     });
 
+    filtered = sortProducts(filtered, state.sortMode);
     $("resultCount").textContent = `共 ${filtered.length} 件`;
     $("grid").innerHTML = filtered.length
-      ? filtered.map(productCard).join("")
-      : '<div class="empty">没有找到相关商品</div>';
+      ? filtered.map((product) => productCard(product, false)).join("")
+      : '<div class="empty"><b>没有找到相关商品</b><span>可以更换关键词或选择其他分类</span></div>';
   }
 
-  function productCard(product) {
+  function sortProducts(list, mode) {
+    const result = [...list];
+    if (mode === "name") return result.sort((a,b) => String(a.name).localeCompare(String(b.name), "zh-CN"));
+    if (mode === "latest") return result.sort((a,b) => Number(b.id) - Number(a.id));
+    if (mode === "order") return result.sort((a,b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+    return result.sort((a,b) => Number(Boolean(b.is_featured)) - Number(Boolean(a.is_featured)) || Number(a.sort_order || 0) - Number(b.sort_order || 0));
+  }
+
+  function productCard(product, compact = false) {
     const selected = state.selected.includes(Number(product.id));
     const imageCount = productImages(product).length;
     return `
-      <article class="card">
+      <article class="card ${compact ? "featured-card" : ""}">
         <button class="pic product-cover" type="button" data-action="show-detail" data-id="${Number(product.id)}" aria-label="查看${escapeAttribute(product.name)}详情">
           ${productVisual(product)}
-          ${imageCount > 1 ? `<span class="image-count">${imageCount} 张</span>` : ""}
+          <span class="visual-shade"></span>
+          ${product.is_featured ? '<span class="featured-badge">推荐</span>' : ""}
+          ${imageCount > 1 ? `<span class="image-count">▧ ${imageCount}</span>` : ""}
         </button>
         <div class="cardBody">
           <h3>${escapeHtml(product.name)}</h3>
           <div class="meta">
-            <span class="pill">${escapeHtml(product.category || "其他")}</span>
-            <span class="pill">${escapeHtml(product.stock_text || "咨询库存")}</span>
+            <span class="pill category-pill">${escapeHtml(product.category || "其他")}</span>
+            <span class="pill stock-pill">${escapeHtml(product.stock_text || "咨询库存")}</span>
           </div>
           <div class="price">${escapeHtml(product.price_text || "实时询价")}</div>
           <div class="actions">
             <button class="detailBtn" type="button" data-action="show-detail" data-id="${Number(product.id)}">查看详情</button>
-            <button class="addBtn ${selected ? "selected" : ""}" type="button" data-action="toggle-select" data-id="${Number(product.id)}">${selected ? "已选" : "加入选品"}</button>
+            <button class="addBtn ${selected ? "selected" : ""}" type="button" data-action="toggle-select" data-id="${Number(product.id)}">${selected ? "✓ 已选" : "+ 加入选品"}</button>
           </div>
         </div>
-      </article>
-    `;
+      </article>`;
   }
 
   function productImages(product) {
     let urls = [];
     const raw = product?.image_urls;
-
-    if (Array.isArray(raw)) {
-      urls = raw;
-    } else if (typeof raw === "string" && raw.trim()) {
+    if (Array.isArray(raw)) urls = raw;
+    else if (typeof raw === "string" && raw.trim()) {
       try {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) urls = parsed;
@@ -294,31 +322,38 @@
         urls = raw.split("\n");
       }
     }
-
     urls = urls.map((url) => String(url || "").trim()).filter(Boolean);
     const legacy = String(product?.image_url || "").trim();
     if (legacy) {
       urls = urls.filter((url) => url !== legacy);
       urls.unshift(legacy);
     }
-
     return [...new Set(urls)];
   }
 
   function productVisual(product) {
     const image = productImages(product)[0];
-    if (image) {
-      return `<img src="${escapeAttribute(image)}" alt="${escapeAttribute(product.name)}" loading="lazy" />`;
-    }
+    if (image) return imageFrame(image, product.name, true);
     return `<span class="emoji-visual">${escapeHtml(product.emoji || "🥩")}</span>`;
+  }
+
+  function imageFrame(url, alt, lazy = false) {
+    const loading = lazy ? ' loading="lazy"' : "";
+    const safeUrl = escapeAttribute(url);
+    const safeAlt = escapeAttribute(alt || "商品图片");
+    return `
+      <span class="image-frame" aria-hidden="true">
+        <img class="image-backdrop" src="${safeUrl}" alt=""${loading} />
+        <img class="image-main" src="${safeUrl}" alt="${safeAlt}"${loading} />
+      </span>`;
   }
 
   function toggleSelect(id) {
     state.selected = state.selected.includes(id)
       ? state.selected.filter((value) => value !== id)
       : [...state.selected, id];
-
     saveSelected();
+    renderFeatured();
     renderProducts();
     toast(state.selected.includes(id) ? "已加入选品" : "已移出选品");
   }
@@ -326,17 +361,15 @@
   function showDetail(id) {
     state.current = state.products.find((product) => Number(product.id) === id);
     if (!state.current) return;
-
     const product = state.current;
     state.detailImages = productImages(product);
     state.detailImageIndex = 0;
-
     $("detailName").textContent = product.name || "";
     renderDetailGallery();
     $("detailMeta").innerHTML = `
+      ${product.is_featured ? '<span class="pill featured-pill">本店推荐</span>' : ""}
       <span class="pill">${escapeHtml(product.category || "其他")}</span>
-      <span class="pill">${escapeHtml(product.stock_text || "咨询库存")}</span>
-    `;
+      <span class="pill">${escapeHtml(product.stock_text || "咨询库存")}</span>`;
     $("detailPrice").textContent = product.price_text || "实时询价";
     $("detailDesc").textContent = product.description || "暂无详细介绍";
     $("detailShade").classList.add("show");
@@ -347,7 +380,6 @@
     const images = state.detailImages;
     const mainButton = $("detailMainImage");
     const thumbs = $("detailThumbs");
-
     if (!images.length) {
       $("detailPic").innerHTML = `<span class="emoji-visual">${escapeHtml(product?.emoji || "🥩")}</span>`;
       $("zoomHint").hidden = true;
@@ -357,17 +389,14 @@
       thumbs.innerHTML = "";
       return;
     }
-
     mainButton.disabled = false;
     mainButton.classList.remove("no-image");
     $("zoomHint").hidden = false;
     setDetailImage(Math.min(state.detailImageIndex, images.length - 1));
-
     thumbs.innerHTML = images.map((url, index) => `
       <button class="detail-thumb ${index === state.detailImageIndex ? "active" : ""}" type="button" data-action="set-detail-image" data-index="${index}" aria-label="查看第 ${index + 1} 张商品图片">
         <img src="${escapeAttribute(url)}" alt="${escapeAttribute(product?.name || "商品")}图片 ${index + 1}" loading="lazy" />
-      </button>
-    `).join("");
+      </button>`).join("");
     thumbs.hidden = images.length <= 1;
   }
 
@@ -375,7 +404,7 @@
     if (!state.detailImages.length || !Number.isInteger(index) || index < 0 || index >= state.detailImages.length) return;
     state.detailImageIndex = index;
     const url = state.detailImages[index];
-    $("detailPic").innerHTML = `<img src="${escapeAttribute(url)}" alt="${escapeAttribute(state.current?.name || "商品图片")}" />`;
+    $("detailPic").innerHTML = imageFrame(url, state.current?.name || "商品图片", false);
     $("detailThumbs").querySelectorAll(".detail-thumb").forEach((button, buttonIndex) => {
       button.classList.toggle("active", buttonIndex === index);
     });
@@ -420,6 +449,7 @@
     const id = Number(state.current.id);
     if (!state.selected.includes(id)) state.selected.push(id);
     saveSelected();
+    renderFeatured();
     renderProducts();
     closeSheet("detailShade");
     toast("已加入选品");
@@ -441,9 +471,7 @@
   }
 
   function selectedProducts() {
-    return state.selected
-      .map((id) => state.products.find((product) => Number(product.id) === id))
-      .filter(Boolean);
+    return state.selected.map((id) => state.products.find((product) => Number(product.id) === id)).filter(Boolean);
   }
 
   function selectedText() {
@@ -451,9 +479,7 @@
     if (!list.length) return "";
     return [
       `【${state.settings.shop_name}·选品清单】`,
-      ...list.map((product, index) =>
-        `${index + 1}. ${product.name}｜${product.price_text || "实时询价"}｜${product.stock_text || "咨询库存"}`
-      ),
+      ...list.map((product, index) => `${index + 1}. ${product.name}｜${product.price_text || "实时询价"}｜${product.stock_text || "咨询库存"}`),
       "",
       `官方客服：@${normalizeUsername(state.settings.bot_username)}`,
       pageUrl()
@@ -465,19 +491,13 @@
       toast("请先选择商品");
       return;
     }
-
     try {
       if (navigator.share) {
         await navigator.share({title: state.settings.shop_name, text, url: pageUrl()});
         return;
       }
-
       await copyText(text);
-      window.open(
-        `https://t.me/share/url?url=${encodeURIComponent(pageUrl())}&text=${encodeURIComponent(text)}`,
-        "_blank",
-        "noopener"
-      );
+      window.open(`https://t.me/share/url?url=${encodeURIComponent(pageUrl())}&text=${encodeURIComponent(text)}`, "_blank", "noopener");
     } catch (error) {
       if (error?.name === "AbortError") return;
       try {
@@ -501,7 +521,6 @@
     } catch {
       toast("正在打开客服");
     }
-
     const bot = normalizeUsername(state.settings.bot_username);
     if (!bot) {
       toast("尚未配置客服账号");
@@ -515,23 +534,34 @@
     $("selectedList").innerHTML = list.length
       ? list.map((product) => `
           <div class="listItem">
-            <div>
+            <div class="selected-thumb">${productVisual(product)}</div>
+            <div class="selected-info">
               <b>${escapeHtml(product.name)}</b>
               <div class="mini">${escapeHtml(product.price_text || "实时询价")} · ${escapeHtml(product.stock_text || "咨询库存")}</div>
             </div>
             <button class="remove" type="button" data-action="remove-selected" data-id="${Number(product.id)}">移除</button>
-          </div>
-        `).join("")
-      : '<div class="empty">暂未选择商品</div>';
-
+          </div>`).join("")
+      : '<div class="empty"><b>暂未选择商品</b><span>在商品卡片点击“加入选品”即可</span></div>';
     $("selectedShade").classList.add("show");
   }
 
   function removeSelected(id) {
     state.selected = state.selected.filter((value) => value !== id);
     saveSelected();
+    renderFeatured();
     renderProducts();
     openSelected();
+  }
+
+  function clearSearch() {
+    $("search").value = "";
+    updateSearchClear();
+    renderProducts();
+    $("search").focus();
+  }
+
+  function updateSearchClear() {
+    $("clearSearch").hidden = !$("search").value;
   }
 
   function readSelected() {
@@ -549,7 +579,9 @@
   }
 
   function updateCount() {
-    $("topCount").textContent = String(state.selected.length);
+    const count = state.selected.length;
+    $("topCount").textContent = String(count);
+    $("bottomCount").textContent = count ? `已选 ${count} 件` : "分享选品";
   }
 
   function closeSheet(id) {
@@ -561,7 +593,6 @@
       await navigator.clipboard.writeText(text);
       return;
     }
-
     const textarea = document.createElement("textarea");
     textarea.value = text;
     textarea.style.position = "fixed";
