@@ -1,0 +1,110 @@
+/* Stable product media layout for iOS Safari and Telegram WebView */
+.product-media{
+  position:relative!important;
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  aspect-ratio:1/1!important;
+  min-width:0!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  overflow:hidden!important;
+  line-height:0!important;
+  appearance:none!important;
+  -webkit-appearance:none!important;
+  background:#f3f5f7!important;
+  transform:translateZ(0);
+}
+
+.product-media>.image-stage{
+  position:absolute!important;
+  inset:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:100%!important;
+  height:100%!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:#fff!important;
+}
+
+.product-media .product-image{
+  position:absolute!important;
+  inset:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:8px!important;
+  border:0!important;
+  border-radius:0!important;
+  object-fit:contain!important;
+  object-position:50% 50%!important;
+  image-orientation:from-image;
+  background:#fff!important;
+}
+
+.product-media>.image-fallback,
+.product-media>.image-stage>.image-fallback{
+  position:absolute!important;
+  inset:0!important;
+  z-index:1!important;
+  display:grid;
+  place-items:center;
+  width:100%!important;
+  height:100%!important;
+  margin:0!important;
+  padding:0!important;
+  line-height:1!important;
+}
+
+.product-media>.image-fallback[hidden],
+.product-media>.image-stage>.image-fallback[hidden]{
+  display:none!important;
+}
+
+.product-media .featured-badge,
+.product-media .image-count{
+  line-height:1.2!important;
+}
+
+.detail-pic-content,
+.detail-image-stage{
+  position:absolute!important;
+  inset:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:100%!important;
+  height:100%!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+
+.detail-image-stage img{
+  position:absolute!important;
+  inset:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:10px!important;
+  object-fit:contain!important;
+  object-position:50% 50%!important;
+  image-orientation:from-image;
+  background:#fff!important;
+}
+
+@media(min-width:600px){
+  .product-media{aspect-ratio:1/1!important}
+}
