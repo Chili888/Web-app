@@ -1,0 +1,19 @@
+.product-cover.pic{
+  background:#f4f6f8;
+}
+
+.product-cover.pic img{
+  object-fit:contain;
+  object-position:center;
+  background:#f4f6f8;
+}
+
+.detail-main-image.sheetPic{
+  background:#f4f6f8;
+}
+
+.detail-main-image .detail-pic-content img{
+  object-fit:contain;
+  object-position:center;
+  background:#f4f6f8;
+}
