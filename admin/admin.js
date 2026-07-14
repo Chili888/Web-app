@@ -1,12 +1,17 @@
 (() => {
   "use strict";
 
+  const MAX_IMAGES = 10;
+  const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
   const state = {
     supabase: null,
     user: null,
     products: [],
     editingProduct: null,
-    settings: null
+    settings: null,
+    imageItems: [],
+    multiImageReady: false
   };
 
   const $ = (id) => document.getElementById(id);
@@ -60,6 +65,7 @@
     $("settingsForm").addEventListener("submit", saveSettings);
     $("refreshProducts").addEventListener("click", loadProducts);
     $("productSearch").addEventListener("input", renderProductList);
+    $("productImage").addEventListener("change", handleImageSelection);
 
     document.addEventListener("click", (event) => {
       const tab = event.target.closest("[data-tab]");
@@ -69,6 +75,11 @@
       if (editButton) {
         const product = state.products.find((item) => Number(item.id) === Number(editButton.dataset.editProduct));
         if (product) openProductModal(product);
+      }
+
+      const imageAction = event.target.closest("[data-image-action]");
+      if (imageAction) {
+        handleImageAction(imageAction.dataset.imageAction, imageAction.dataset.imageKey);
       }
 
       if (event.target === $("productModal")) closeProductModal();
@@ -148,8 +159,18 @@
     }
 
     state.products = data || [];
+    state.multiImageReady = state.products.length
+      ? Object.prototype.hasOwnProperty.call(state.products[0], "image_urls")
+      : await detectMultiImageColumn();
+    $("multiImageUpgradeNotice").hidden = state.multiImageReady;
+
     updateStats();
     renderProductList();
+  }
+
+  async function detectMultiImageColumn() {
+    const { error } = await state.supabase.from("products").select("image_urls").limit(1);
+    return !error;
   }
 
   function renderProductList() {
@@ -159,22 +180,26 @@
     );
 
     $("productList").innerHTML = list.length
-      ? list.map((product) => `
-          <article class="product-row">
-            <div class="thumb">${productVisual(product)}</div>
-            <div class="product-main">
-              <h3>${escapeHtml(product.name)}</h3>
-              <div class="product-meta">
-                <span class="badge">${escapeHtml(product.category || "其他")}</span>
-                <span class="badge">${escapeHtml(product.price_text || "实时询价")}</span>
-                <span class="badge ${product.is_active ? "live" : "off"}">${product.is_active ? "已上架" : "已下架"}</span>
+      ? list.map((product) => {
+          const count = productImages(product).length;
+          return `
+            <article class="product-row">
+              <div class="thumb">${productVisual(product)}</div>
+              <div class="product-main">
+                <h3>${escapeHtml(product.name)}</h3>
+                <div class="product-meta">
+                  <span class="badge">${escapeHtml(product.category || "其他")}</span>
+                  <span class="badge">${escapeHtml(product.price_text || "实时询价")}</span>
+                  <span class="badge">${count ? `${count} 张图` : "无图片"}</span>
+                  <span class="badge ${product.is_active ? "live" : "off"}">${product.is_active ? "已上架" : "已下架"}</span>
+                </div>
               </div>
-            </div>
-            <div class="row-actions">
-              <button class="secondary" type="button" data-edit-product="${Number(product.id)}">编辑</button>
-            </div>
-          </article>
-        `).join("")
+              <div class="row-actions">
+                <button class="secondary" type="button" data-edit-product="${Number(product.id)}">编辑</button>
+              </div>
+            </article>
+          `;
+        }).join("")
       : '<div class="empty">没有找到商品</div>';
   }
 
@@ -213,27 +238,32 @@
     const form = $("productForm");
     form.reset();
     form.elements.id.value = "";
-    form.elements.image_url.value = "";
     form.elements.emoji.value = "🥩";
     form.elements.sort_order.value = String(nextSortOrder());
     form.elements.is_active.checked = true;
     form.elements.is_featured.checked = false;
 
+    clearImageItems();
+    state.imageItems = productImages(product).map((url) => ({
+      key: uniqueKey(),
+      type: "existing",
+      url,
+      previewUrl: url,
+      file: null
+    }));
+
     $("productModalTitle").textContent = product ? "编辑商品" : "新增商品";
     $("deleteProductButton").hidden = !product;
-    $("imagePreview").hidden = true;
-    $("imagePreview").innerHTML = "";
     $("productImage").value = "";
 
     if (product) {
       fillForm(form, product);
       form.elements.id.value = product.id;
-      form.elements.image_url.value = product.image_url || "";
       form.elements.is_active.checked = Boolean(product.is_active);
       form.elements.is_featured.checked = Boolean(product.is_featured);
-      showImagePreview(product.image_url);
     }
 
+    renderImagePreview();
     $("productModal").hidden = false;
     document.body.style.overflow = "hidden";
   }
@@ -242,6 +272,92 @@
     $("productModal").hidden = true;
     document.body.style.overflow = "";
     state.editingProduct = null;
+    clearImageItems();
+  }
+
+  function clearImageItems() {
+    state.imageItems.forEach((item) => {
+      if (item.type === "new" && item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    });
+    state.imageItems = [];
+    if ($("imagePreview")) $("imagePreview").innerHTML = "";
+  }
+
+  function handleImageSelection(event) {
+    const input = event.currentTarget;
+    const files = Array.from(input.files || []);
+    input.value = "";
+    if (!files.length) return;
+
+    if (!state.multiImageReady) {
+      toast("请先运行 supabase-multi-images.sql 启用多图功能");
+      return;
+    }
+
+    const available = MAX_IMAGES - state.imageItems.length;
+    if (available <= 0) {
+      toast(`每个商品最多上传 ${MAX_IMAGES} 张图片`);
+      return;
+    }
+
+    const accepted = [];
+    for (const file of files.slice(0, available)) {
+      if (!/^image\/(jpeg|png|webp|gif)$/i.test(file.type)) {
+        toast(`不支持文件：${file.name}`);
+        continue;
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        toast(`${file.name} 超过 5 MB`);
+        continue;
+      }
+      accepted.push({
+        key: uniqueKey(),
+        type: "new",
+        url: "",
+        previewUrl: URL.createObjectURL(file),
+        file
+      });
+    }
+
+    state.imageItems.push(...accepted);
+    if (files.length > available) toast(`最多保留 ${MAX_IMAGES} 张图片`);
+    renderImagePreview();
+  }
+
+  function handleImageAction(action, key) {
+    const index = state.imageItems.findIndex((item) => item.key === key);
+    if (index < 0) return;
+
+    if (action === "remove") {
+      const [removed] = state.imageItems.splice(index, 1);
+      if (removed.type === "new" && removed.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+    }
+
+    if (action === "primary" && index > 0) {
+      const [item] = state.imageItems.splice(index, 1);
+      state.imageItems.unshift(item);
+    }
+
+    renderImagePreview();
+  }
+
+  function renderImagePreview() {
+    const container = $("imagePreview");
+    if (!state.imageItems.length) {
+      container.innerHTML = '<div class="image-empty">暂未添加商品图片，将使用备用图标。</div>';
+      return;
+    }
+
+    container.innerHTML = state.imageItems.map((item, index) => `
+      <div class="image-preview-card">
+        <img src="${escapeAttribute(item.previewUrl)}" alt="商品图片预览 ${index + 1}" />
+        ${index === 0 ? '<span class="primary-image-badge">主图</span>' : ""}
+        <div class="image-preview-actions">
+          ${index > 0 ? `<button type="button" data-image-action="primary" data-image-key="${escapeAttribute(item.key)}">设为主图</button>` : ""}
+          <button class="remove-image" type="button" data-image-action="remove" data-image-key="${escapeAttribute(item.key)}">移除</button>
+        </div>
+      </div>
+    `).join("");
   }
 
   async function saveProduct(event) {
@@ -251,25 +367,30 @@
     setButtonBusy(saveButton, true, "保存中…");
 
     try {
-      let imageUrl = form.elements.image_url.value.trim();
-      const file = $("productImage").files[0];
-
-      if (file) {
-        imageUrl = await uploadProductImage(file);
+      if (!state.multiImageReady && state.imageItems.length > 1) {
+        throw new Error("请先运行 supabase-multi-images.sql 启用多图功能");
       }
 
+      const imageUrls = await Promise.all(state.imageItems.map(async (item) => {
+        if (item.type === "existing") return item.url;
+        return uploadProductImage(item.file);
+      }));
+
+      const cleanImageUrls = imageUrls.map((url) => String(url || "").trim()).filter(Boolean);
       const payload = {
         name: form.elements.name.value.trim(),
         category: form.elements.category.value.trim(),
         price_text: form.elements.price_text.value.trim(),
         stock_text: form.elements.stock_text.value.trim(),
         emoji: form.elements.emoji.value.trim() || "🥩",
-        image_url: imageUrl || null,
+        image_url: cleanImageUrls[0] || null,
         description: form.elements.description.value.trim(),
         is_active: form.elements.is_active.checked,
         is_featured: form.elements.is_featured.checked,
         sort_order: Number(form.elements.sort_order.value || 0)
       };
+
+      if (state.multiImageReady) payload.image_urls = cleanImageUrls;
 
       const id = Number(form.elements.id.value);
       const query = id
@@ -290,12 +411,11 @@
   }
 
   async function uploadProductImage(file) {
-    if (file.size > 5 * 1024 * 1024) {
-      throw new Error("图片不能超过 5 MB");
-    }
+    if (!file) throw new Error("图片文件无效");
+    if (file.size > MAX_IMAGE_BYTES) throw new Error("图片不能超过 5 MB");
 
-    const extension = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const path = `${state.user.id}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+    const extension = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const path = `${state.user.id}/${Date.now()}-${uniqueKey()}.${extension}`;
 
     const { error } = await state.supabase.storage
       .from("product-images")
@@ -357,7 +477,7 @@
       const field = form.elements.namedItem(key);
       if (!field) return;
       if (field.type === "checkbox") field.checked = Boolean(value);
-      else field.value = value ?? "";
+      else if (field.type !== "file") field.value = value ?? "";
     });
   }
 
@@ -366,17 +486,41 @@
     return Math.max(...state.products.map((item) => Number(item.sort_order || 0))) + 10;
   }
 
+  function productImages(product) {
+    if (!product) return [];
+    let urls = [];
+    const raw = product.image_urls;
+
+    if (Array.isArray(raw)) {
+      urls = raw;
+    } else if (typeof raw === "string" && raw.trim()) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) urls = parsed;
+      } catch {
+        urls = raw.split("\n");
+      }
+    }
+
+    urls = urls.map((url) => String(url || "").trim()).filter(Boolean);
+    const legacy = String(product.image_url || "").trim();
+    if (legacy) {
+      urls = urls.filter((url) => url !== legacy);
+      urls.unshift(legacy);
+    }
+    return [...new Set(urls)];
+  }
+
   function productVisual(product) {
-    if (product.image_url) {
-      return `<img src="${escapeAttribute(product.image_url)}" alt="${escapeAttribute(product.name)}" />`;
+    const image = productImages(product)[0];
+    if (image) {
+      return `<img src="${escapeAttribute(image)}" alt="${escapeAttribute(product.name)}" />`;
     }
     return escapeHtml(product.emoji || "🥩");
   }
 
-  function showImagePreview(url) {
-    if (!url) return;
-    $("imagePreview").innerHTML = `<img src="${escapeAttribute(url)}" alt="商品图片预览" />`;
-    $("imagePreview").hidden = false;
+  function uniqueKey() {
+    return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
 
   function setButtonBusy(button, busy, text) {
@@ -389,6 +533,7 @@
     if (/invalid login credentials/i.test(message)) return "邮箱或密码不正确";
     if (/row-level security/i.test(message)) return "当前账号没有执行此操作的权限";
     if (/failed to fetch/i.test(message)) return "无法连接 Supabase，请检查配置或网络";
+    if (/image_urls.*does not exist|column.*image_urls/i.test(message)) return "请先运行 supabase-multi-images.sql 启用多图功能";
     return message;
   }
 
@@ -397,7 +542,7 @@
     element.textContent = message;
     element.classList.add("show");
     clearTimeout(window.__adminToast);
-    window.__adminToast = window.setTimeout(() => element.classList.remove("show"), 2200);
+    window.__adminToast = window.setTimeout(() => element.classList.remove("show"), 2400);
   }
 
   function escapeHtml(value) {
