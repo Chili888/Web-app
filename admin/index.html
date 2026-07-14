@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes" />
   <meta name="theme-color" content="#0f172a" />
   <title>肉铺管理后台</title>
-  <link rel="stylesheet" href="./admin.css?v=20260715-3" />
+  <link rel="stylesheet" href="./admin.css?v=20260715-4" />
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="../config.js"></script>
-  <script defer src="./admin.js?v=20260715-3"></script>
+  <script defer src="./admin.js?v=20260715-4"></script>
 </head>
 <body>
   <div id="setupRequired" class="setup" hidden>
@@ -19,7 +19,7 @@
     <form id="loginForm" class="login-card">
       <div class="brand-mark">🥩</div>
       <h1>肉铺管理后台</h1>
-      <p>登录后管理商品、图片、上下架与店铺资料。</p>
+      <p>登录后管理商品、分类、图片、上下架与店铺资料。</p>
       <label>邮箱<input id="loginEmail" type="email" autocomplete="username" required placeholder="admin@example.com" /></label>
       <label>密码<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="请输入密码" /></label>
       <button id="loginButton" class="primary" type="submit">登录后台</button>
@@ -49,6 +49,7 @@
     <main class="layout">
       <aside class="sidebar">
         <button class="nav active" type="button" data-tab="products"><span>▦</span>商品管理</button>
+        <button class="nav" type="button" data-tab="categories"><span>⌗</span>分类管理</button>
         <button class="nav" type="button" data-tab="settings"><span>⚙</span>店铺设置</button>
         <button class="nav" type="button" data-tab="data"><span>⇅</span>数据工具</button>
       </aside>
@@ -56,11 +57,12 @@
       <section class="content">
         <div id="productsTab" class="tab-panel">
           <div class="panel-head">
-            <div><span class="eyebrow">商品中心</span><h2>商品管理</h2><p>支持搜索筛选、批量操作、复制商品、快速上下架与排序。</p></div>
+            <div><span class="eyebrow">商品中心</span><h2>商品管理</h2><p>搜索筛选、批量管理、复制商品、快速上下架和排序。</p></div>
             <button id="newProductButton" class="primary" type="button">＋ 新增商品</button>
           </div>
 
           <div id="multiImageUpgradeNotice" class="upgrade-notice" hidden>多图功能尚未启用，请运行 <code>supabase-multi-images.sql</code>。</div>
+          <div id="categoryUpgradeNotice" class="upgrade-notice" hidden>分类管理尚未启用，请在 Supabase SQL Editor 运行 <code>supabase-categories.sql</code>。</div>
 
           <div class="stats stats-five">
             <div><span>全部商品</span><b id="statTotal">0</b></div>
@@ -81,6 +83,10 @@
           <div id="bulkBar" class="bulk-bar" hidden>
             <label class="select-all"><input id="selectAllProducts" type="checkbox" /> 全选当前结果</label>
             <span id="selectedCount">已选 0 项</span>
+            <div class="bulk-category">
+              <select id="bulkCategorySelect"><option value="">移动到分类</option></select>
+              <button type="button" data-bulk-action="category">应用分类</button>
+            </div>
             <div class="bulk-actions">
               <button type="button" data-bulk-action="activate">批量上架</button>
               <button type="button" data-bulk-action="deactivate">批量下架</button>
@@ -91,6 +97,22 @@
           </div>
 
           <div id="productList" class="product-list"><div class="empty">正在加载商品…</div></div>
+        </div>
+
+        <div id="categoriesTab" class="tab-panel" hidden>
+          <div class="panel-head">
+            <div><span class="eyebrow">目录结构</span><h2>分类管理</h2><p>创建、重命名、排序和隐藏分类；修改名称会同步更新所属商品。</p></div>
+            <button id="newCategoryButton" class="primary" type="button">＋ 新增分类</button>
+          </div>
+          <div id="categoryTabUpgrade" class="upgrade-notice" hidden>请先运行 <code>supabase-categories.sql</code>，分类管理功能才可使用。</div>
+          <div class="stats stats-four">
+            <div><span>全部分类</span><b id="statCategoryTotal">0</b></div>
+            <div><span>前台显示</span><b id="statCategoryActive">0</b></div>
+            <div><span>已隐藏</span><b id="statCategoryHidden">0</b></div>
+            <div><span>空分类</span><b id="statCategoryEmpty">0</b></div>
+          </div>
+          <div class="category-help"><b>分类规则</b><span>隐藏分类后，普通访客不会看到该分类及其商品；管理员仍可在后台查看和编辑。</span></div>
+          <div id="categoryList" class="category-list"><div class="empty">正在加载分类…</div></div>
         </div>
 
         <div id="settingsTab" class="tab-panel" hidden>
@@ -124,11 +146,11 @@
         <div id="dataTab" class="tab-panel" hidden>
           <div class="panel-head"><div><span class="eyebrow">备份与迁移</span><h2>数据工具</h2><p>导出完整备份、商品 CSV，或从 JSON 恢复数据。</p></div></div>
           <div class="tool-grid">
-            <section class="tool-card"><div class="tool-icon">↓</div><h3>完整 JSON 备份</h3><p>包含全部商品、图片链接和店铺设置。</p><button id="exportJsonButton" class="primary" type="button">导出 JSON</button></section>
+            <section class="tool-card"><div class="tool-icon">↓</div><h3>完整 JSON 备份</h3><p>包含商品、分类、图片链接和店铺设置。</p><button id="exportJsonButton" class="primary" type="button">导出 JSON</button></section>
             <section class="tool-card"><div class="tool-icon">表</div><h3>商品 CSV</h3><p>便于使用 Excel 或表格软件查看商品资料。</p><button id="exportCsvButton" class="secondary" type="button">导出 CSV</button></section>
-            <section class="tool-card"><div class="tool-icon">↑</div><h3>导入 JSON 备份</h3><p>导入前会要求确认；相同 ID 的商品将被更新。</p><label class="file-button">选择 JSON 文件<input id="importJsonInput" type="file" accept="application/json,.json" /></label></section>
+            <section class="tool-card"><div class="tool-icon">↑</div><h3>导入 JSON 备份</h3><p>相同 ID 将更新；分类会先恢复，再关联商品。</p><label class="file-button">选择 JSON 文件<input id="importJsonInput" type="file" accept="application/json,.json" /></label></section>
           </div>
-          <div class="data-note"><b>建议：</b>每次大批量修改商品前先导出一次完整备份。</div>
+          <div class="data-note"><b>建议：</b>每次大批量修改商品或分类前先导出一次完整备份。</div>
         </div>
       </section>
     </main>
@@ -141,7 +163,7 @@
         <input type="hidden" name="id" />
         <div class="form-grid">
           <label>商品名称<input name="name" required /></label>
-          <label>商品分类<input name="category" list="categoryOptions" required placeholder="猪肉 / 精品 / 组合" /><datalist id="categoryOptions"></datalist></label>
+          <label>商品分类<select id="productCategory" name="category_id" required><option value="">请选择分类</option></select><small>分类需要先在“分类管理”中创建。</small></label>
           <label>价格文字<input name="price_text" required placeholder="实时询价" /></label>
           <label>库存状态<input name="stock_text" required placeholder="当日库存" /></label>
           <label>备用图标<input name="emoji" maxlength="8" placeholder="🥩" /></label>
@@ -155,6 +177,31 @@
         <div class="form-actions split">
           <button id="deleteProductButton" class="danger" type="button" hidden>删除商品</button>
           <div class="right-actions"><button id="cancelProductButton" class="secondary" type="button">取消</button><button id="saveProductButton" class="primary" type="submit">保存商品</button></div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="categoryModal" class="modal" hidden>
+    <div class="modal-card category-modal-card">
+      <div class="modal-head"><div><div class="eyebrow">分类资料</div><h2 id="categoryModalTitle">新增分类</h2></div><button id="closeCategoryModal" class="icon-button" type="button">×</button></div>
+      <form id="categoryForm">
+        <input type="hidden" name="id" />
+        <input type="hidden" name="old_name" />
+        <div class="form-grid">
+          <label>分类名称<input name="name" required maxlength="40" placeholder="例如：猪肉" /></label>
+          <label>分类图标<input name="icon" maxlength="8" placeholder="🥩" /></label>
+          <label>显示顺序<input name="sort_order" type="number" value="0" /></label>
+          <label class="check"><input name="is_active" type="checkbox" checked /> 前台显示分类及其商品</label>
+          <label class="full">分类说明<textarea name="description" rows="3" placeholder="简要说明该分类包含的商品"></textarea></label>
+        </div>
+        <div id="categoryUsage" class="category-usage" hidden></div>
+        <div id="reassignWrap" class="reassign-wrap" hidden>
+          <label>删除前将商品移动到<select id="reassignCategorySelect"></select></label>
+        </div>
+        <div class="form-actions split">
+          <button id="deleteCategoryButton" class="danger" type="button" hidden>删除分类</button>
+          <div class="right-actions"><button id="cancelCategoryButton" class="secondary" type="button">取消</button><button id="saveCategoryButton" class="primary" type="submit">保存分类</button></div>
         </div>
       </form>
     </div>
