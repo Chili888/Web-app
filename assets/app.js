@@ -18,14 +18,14 @@
   };
 
   const DEMO_PRODUCTS = [
-    {id:1,name:"高品质猪肉",category:"猪肉",emoji:"🥩",price_text:"实时询价",stock_text:"当日库存",description:"高品质猪肉占位商品，可替换为具体部位、重量、产地和规格说明。",image_url:"",is_active:true,sort_order:10},
-    {id:2,name:"XX1",category:"猪肉",emoji:"🍖",price_text:"实时询价",stock_text:"咨询库存",description:"XX1 占位模板，可在后台修改商品名称、图片、分类、价格与详情。",image_url:"",is_active:true,sort_order:20},
-    {id:3,name:"XX2",category:"精品",emoji:"🥓",price_text:"咨询报价",stock_text:"当日库存",description:"XX2 占位模板，适合展示精品肉类或组合商品。",image_url:"",is_active:true,sort_order:30},
-    {id:4,name:"XX3",category:"精品",emoji:"🍗",price_text:"咨询报价",stock_text:"咨询库存",description:"XX3 占位模板，后续可替换为正式商品资料。",image_url:"",is_active:true,sort_order:40},
-    {id:5,name:"家庭鲜肉组合",category:"组合",emoji:"🧺",price_text:"套餐询价",stock_text:"可预订",description:"家庭组合占位商品，可填写具体搭配、重量和配送范围。",image_url:"",is_active:true,sort_order:50},
-    {id:6,name:"精选排骨",category:"猪肉",emoji:"🍖",price_text:"实时询价",stock_text:"当日库存",description:"精选排骨占位商品，实际价格和规格请联系官方客服。",image_url:"",is_active:true,sort_order:60},
-    {id:7,name:"精品牛肉",category:"牛肉",emoji:"🥩",price_text:"实时询价",stock_text:"咨询库存",description:"精品牛肉占位商品，可补充部位、等级和包装规格。",image_url:"",is_active:true,sort_order:70},
-    {id:8,name:"其他生鲜需求",category:"其他",emoji:"🛒",price_text:"咨询报价",stock_text:"联系客服",description:"没有找到需要的商品，可将具体需求直接发送给客服。",image_url:"",is_active:true,sort_order:80}
+    {id:1,name:"高品质猪肉",category:"猪肉",emoji:"🥩",price_text:"实时询价",stock_text:"当日库存",description:"高品质猪肉占位商品，可替换为具体部位、重量、产地和规格说明。",image_url:"",image_urls:[],is_active:true,sort_order:10},
+    {id:2,name:"XX1",category:"猪肉",emoji:"🍖",price_text:"实时询价",stock_text:"咨询库存",description:"XX1 占位模板，可在后台修改商品名称、图片、分类、价格与详情。",image_url:"",image_urls:[],is_active:true,sort_order:20},
+    {id:3,name:"XX2",category:"精品",emoji:"🥓",price_text:"咨询报价",stock_text:"当日库存",description:"XX2 占位模板，适合展示精品肉类或组合商品。",image_url:"",image_urls:[],is_active:true,sort_order:30},
+    {id:4,name:"XX3",category:"精品",emoji:"🍗",price_text:"咨询报价",stock_text:"咨询库存",description:"XX3 占位模板，后续可替换为正式商品资料。",image_url:"",image_urls:[],is_active:true,sort_order:40},
+    {id:5,name:"家庭鲜肉组合",category:"组合",emoji:"🧺",price_text:"套餐询价",stock_text:"可预订",description:"家庭组合占位商品，可填写具体搭配、重量和配送范围。",image_url:"",image_urls:[],is_active:true,sort_order:50},
+    {id:6,name:"精选排骨",category:"猪肉",emoji:"🍖",price_text:"实时询价",stock_text:"当日库存",description:"精选排骨占位商品，实际价格和规格请联系官方客服。",image_url:"",image_urls:[],is_active:true,sort_order:60},
+    {id:7,name:"精品牛肉",category:"牛肉",emoji:"🥩",price_text:"实时询价",stock_text:"咨询库存",description:"精品牛肉占位商品，可补充部位、等级和包装规格。",image_url:"",image_urls:[],is_active:true,sort_order:70},
+    {id:8,name:"其他生鲜需求",category:"其他",emoji:"🛒",price_text:"咨询报价",stock_text:"联系客服",description:"没有找到需要的商品，可将具体需求直接发送给客服。",image_url:"",image_urls:[],is_active:true,sort_order:80}
   ];
 
   const state = {
@@ -34,6 +34,10 @@
     selected: readSelected(),
     activeCategory: "全部",
     current: null,
+    detailImages: [],
+    detailImageIndex: 0,
+    lightboxIndex: 0,
+    lightboxTouchStartX: null,
     supabase: null,
     usingDemo: false
   };
@@ -88,6 +92,7 @@
       if (actionElement) {
         const action = actionElement.dataset.action;
         const id = Number(actionElement.dataset.id);
+        const index = Number(actionElement.dataset.index);
         const handlers = {
           "scroll-products": () => $("products").scrollIntoView(),
           "open-selected": openSelected,
@@ -100,7 +105,12 @@
           "set-category": () => setCategory(actionElement.dataset.category),
           "show-detail": () => showDetail(id),
           "toggle-select": () => toggleSelect(id),
-          "remove-selected": () => removeSelected(id)
+          "remove-selected": () => removeSelected(id),
+          "set-detail-image": () => setDetailImage(index),
+          "open-lightbox": () => openLightbox(state.detailImageIndex),
+          "close-lightbox": closeLightbox,
+          "previous-image": () => moveLightbox(-1),
+          "next-image": () => moveLightbox(1)
         };
         handlers[action]?.();
       }
@@ -109,7 +119,29 @@
       if (shade && event.target === shade) {
         closeSheet(shade.dataset.closeSheet);
       }
+
+      if (event.target === $("imageLightbox")) closeLightbox();
     });
+
+    document.addEventListener("keydown", (event) => {
+      if ($("imageLightbox").hidden) return;
+      if (event.key === "Escape") closeLightbox();
+      if (event.key === "ArrowLeft") moveLightbox(-1);
+      if (event.key === "ArrowRight") moveLightbox(1);
+    });
+
+    $("imageLightbox").addEventListener("touchstart", (event) => {
+      state.lightboxTouchStartX = event.changedTouches[0]?.clientX ?? null;
+    }, {passive: true});
+
+    $("imageLightbox").addEventListener("touchend", (event) => {
+      if (state.lightboxTouchStartX === null) return;
+      const endX = event.changedTouches[0]?.clientX ?? state.lightboxTouchStartX;
+      const delta = endX - state.lightboxTouchStartX;
+      state.lightboxTouchStartX = null;
+      if (Math.abs(delta) < 45) return;
+      moveLightbox(delta > 0 ? -1 : 1);
+    }, {passive: true});
   }
 
   async function loadSettings() {
@@ -218,7 +250,6 @@
     });
 
     $("resultCount").textContent = `共 ${filtered.length} 件`;
-
     $("grid").innerHTML = filtered.length
       ? filtered.map(productCard).join("")
       : '<div class="empty">没有找到相关商品</div>';
@@ -226,9 +257,13 @@
 
   function productCard(product) {
     const selected = state.selected.includes(Number(product.id));
+    const imageCount = productImages(product).length;
     return `
       <article class="card">
-        <div class="pic">${productVisual(product)}</div>
+        <button class="pic product-cover" type="button" data-action="show-detail" data-id="${Number(product.id)}" aria-label="查看${escapeAttribute(product.name)}详情">
+          ${productVisual(product)}
+          ${imageCount > 1 ? `<span class="image-count">${imageCount} 张</span>` : ""}
+        </button>
         <div class="cardBody">
           <h3>${escapeHtml(product.name)}</h3>
           <div class="meta">
@@ -238,18 +273,44 @@
           <div class="price">${escapeHtml(product.price_text || "实时询价")}</div>
           <div class="actions">
             <button class="detailBtn" type="button" data-action="show-detail" data-id="${Number(product.id)}">查看详情</button>
-            <button class="addBtn" type="button" data-action="toggle-select" data-id="${Number(product.id)}">${selected ? "已选" : "加入选品"}</button>
+            <button class="addBtn ${selected ? "selected" : ""}" type="button" data-action="toggle-select" data-id="${Number(product.id)}">${selected ? "已选" : "加入选品"}</button>
           </div>
         </div>
       </article>
     `;
   }
 
-  function productVisual(product) {
-    if (product.image_url) {
-      return `<img src="${escapeAttribute(product.image_url)}" alt="${escapeAttribute(product.name)}" loading="lazy" />`;
+  function productImages(product) {
+    let urls = [];
+    const raw = product?.image_urls;
+
+    if (Array.isArray(raw)) {
+      urls = raw;
+    } else if (typeof raw === "string" && raw.trim()) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) urls = parsed;
+      } catch {
+        urls = raw.split("\n");
+      }
     }
-    return escapeHtml(product.emoji || "🥩");
+
+    urls = urls.map((url) => String(url || "").trim()).filter(Boolean);
+    const legacy = String(product?.image_url || "").trim();
+    if (legacy) {
+      urls = urls.filter((url) => url !== legacy);
+      urls.unshift(legacy);
+    }
+
+    return [...new Set(urls)];
+  }
+
+  function productVisual(product) {
+    const image = productImages(product)[0];
+    if (image) {
+      return `<img src="${escapeAttribute(image)}" alt="${escapeAttribute(product.name)}" loading="lazy" />`;
+    }
+    return `<span class="emoji-visual">${escapeHtml(product.emoji || "🥩")}</span>`;
   }
 
   function toggleSelect(id) {
@@ -267,8 +328,11 @@
     if (!state.current) return;
 
     const product = state.current;
+    state.detailImages = productImages(product);
+    state.detailImageIndex = 0;
+
     $("detailName").textContent = product.name || "";
-    $("detailPic").innerHTML = productVisual(product);
+    renderDetailGallery();
     $("detailMeta").innerHTML = `
       <span class="pill">${escapeHtml(product.category || "其他")}</span>
       <span class="pill">${escapeHtml(product.stock_text || "咨询库存")}</span>
@@ -276,6 +340,79 @@
     $("detailPrice").textContent = product.price_text || "实时询价";
     $("detailDesc").textContent = product.description || "暂无详细介绍";
     $("detailShade").classList.add("show");
+  }
+
+  function renderDetailGallery() {
+    const product = state.current;
+    const images = state.detailImages;
+    const mainButton = $("detailMainImage");
+    const thumbs = $("detailThumbs");
+
+    if (!images.length) {
+      $("detailPic").innerHTML = `<span class="emoji-visual">${escapeHtml(product?.emoji || "🥩")}</span>`;
+      $("zoomHint").hidden = true;
+      mainButton.disabled = true;
+      mainButton.classList.add("no-image");
+      thumbs.hidden = true;
+      thumbs.innerHTML = "";
+      return;
+    }
+
+    mainButton.disabled = false;
+    mainButton.classList.remove("no-image");
+    $("zoomHint").hidden = false;
+    setDetailImage(Math.min(state.detailImageIndex, images.length - 1));
+
+    thumbs.innerHTML = images.map((url, index) => `
+      <button class="detail-thumb ${index === state.detailImageIndex ? "active" : ""}" type="button" data-action="set-detail-image" data-index="${index}" aria-label="查看第 ${index + 1} 张商品图片">
+        <img src="${escapeAttribute(url)}" alt="${escapeAttribute(product?.name || "商品")}图片 ${index + 1}" loading="lazy" />
+      </button>
+    `).join("");
+    thumbs.hidden = images.length <= 1;
+  }
+
+  function setDetailImage(index) {
+    if (!state.detailImages.length || !Number.isInteger(index) || index < 0 || index >= state.detailImages.length) return;
+    state.detailImageIndex = index;
+    const url = state.detailImages[index];
+    $("detailPic").innerHTML = `<img src="${escapeAttribute(url)}" alt="${escapeAttribute(state.current?.name || "商品图片")}" />`;
+    $("detailThumbs").querySelectorAll(".detail-thumb").forEach((button, buttonIndex) => {
+      button.classList.toggle("active", buttonIndex === index);
+    });
+  }
+
+  function openLightbox(index = 0) {
+    if (!state.detailImages.length) return;
+    state.lightboxIndex = Math.max(0, Math.min(index, state.detailImages.length - 1));
+    renderLightbox();
+    $("imageLightbox").hidden = false;
+    document.body.classList.add("lightbox-open");
+  }
+
+  function renderLightbox() {
+    const images = state.detailImages;
+    if (!images.length) return;
+    const index = ((state.lightboxIndex % images.length) + images.length) % images.length;
+    state.lightboxIndex = index;
+    const url = images[index];
+    $("lightboxImage").src = url;
+    $("lightboxImage").alt = `${state.current?.name || "商品"}高清图片 ${index + 1}`;
+    $("lightboxCount").textContent = `${index + 1} / ${images.length}`;
+    $("originalImageLink").href = url;
+    $("lightboxPrevious").hidden = images.length <= 1;
+    $("lightboxNext").hidden = images.length <= 1;
+  }
+
+  function moveLightbox(direction) {
+    if (state.detailImages.length <= 1) return;
+    state.lightboxIndex += direction;
+    renderLightbox();
+  }
+
+  function closeLightbox() {
+    $("imageLightbox").hidden = true;
+    $("lightboxImage").removeAttribute("src");
+    document.body.classList.remove("lightbox-open");
   }
 
   function addCurrent() {
