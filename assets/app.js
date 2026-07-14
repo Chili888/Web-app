@@ -17,18 +17,27 @@
     anti_fraud_notice: "仅认准官方客服、频道和群组，不向其他账号付款。"
   };
 
+  const DEMO_CATEGORIES = [
+    {id: 1, name: "猪肉", icon: "🐖", description: "精选猪肉与常用部位", sort_order: 10, is_active: true},
+    {id: 2, name: "牛肉", icon: "🐂", description: "牛肉及相关精品部位", sort_order: 20, is_active: true},
+    {id: 3, name: "组合", icon: "🧺", description: "家庭装与组合套餐", sort_order: 30, is_active: true},
+    {id: 4, name: "其他", icon: "🛒", description: "其他生鲜与定制需求", sort_order: 40, is_active: true}
+  ];
+
   const DEMO_PRODUCTS = [
-    {id:1,name:"高品质猪肉",category:"猪肉",emoji:"🥩",price_text:"实时询价",stock_text:"当日库存",description:"高品质猪肉占位商品，可替换为具体部位、重量、产地和规格说明。",image_url:"",image_urls:[],is_active:true,is_featured:true,sort_order:10},
-    {id:2,name:"XX1",category:"猪肉",emoji:"🍖",price_text:"实时询价",stock_text:"咨询库存",description:"XX1 占位模板，可在后台修改商品名称、图片、分类、价格与详情。",image_url:"",image_urls:[],is_active:true,is_featured:false,sort_order:20},
-    {id:3,name:"XX2",category:"精品",emoji:"🥓",price_text:"咨询报价",stock_text:"当日库存",description:"XX2 占位模板，适合展示精品肉类或组合商品。",image_url:"",image_urls:[],is_active:true,is_featured:true,sort_order:30},
-    {id:4,name:"XX3",category:"精品",emoji:"🍗",price_text:"咨询报价",stock_text:"咨询库存",description:"XX3 占位模板，后续可替换为正式商品资料。",image_url:"",image_urls:[],is_active:true,is_featured:false,sort_order:40}
+    {id:1,name:"高品质猪肉",category:"猪肉",category_id:1,emoji:"🥩",price_text:"实时询价",stock_text:"当日库存",description:"高品质猪肉占位商品，可替换为具体部位、重量、产地和规格说明。",image_url:"",image_urls:[],is_active:true,is_featured:true,sort_order:10},
+    {id:2,name:"精品牛肉",category:"牛肉",category_id:2,emoji:"🥩",price_text:"实时询价",stock_text:"咨询库存",description:"精品牛肉占位商品，可补充部位、等级和包装规格。",image_url:"",image_urls:[],is_active:true,is_featured:true,sort_order:20},
+    {id:3,name:"家庭鲜肉组合",category:"组合",category_id:3,emoji:"🧺",price_text:"套餐询价",stock_text:"可预订",description:"家庭组合占位商品，可填写具体搭配、重量和配送范围。",image_url:"",image_urls:[],is_active:true,is_featured:false,sort_order:30},
+    {id:4,name:"其他生鲜需求",category:"其他",category_id:4,emoji:"🛒",price_text:"咨询报价",stock_text:"联系客服",description:"没有找到需要的商品，可将具体需求直接发送给客服。",image_url:"",image_urls:[],is_active:true,is_featured:false,sort_order:40}
   ];
 
   const state = {
     settings: {...DEFAULT_SETTINGS},
+    categories: [],
+    categoriesReady: false,
     products: [],
     selected: readSelected(),
-    activeCategory: "全部",
+    activeCategory: "all",
     sortMode: "recommended",
     current: null,
     detailImages: [],
@@ -40,7 +49,6 @@
   };
 
   const $ = (id) => document.getElementById(id);
-
   document.addEventListener("DOMContentLoaded", init);
 
   async function init() {
@@ -51,16 +59,14 @@
 
     const config = window.APP_CONFIG || {};
     const configured = Boolean(config.supabaseUrl && config.supabaseAnonKey && window.supabase?.createClient);
-
     if (!configured) {
-      useDemo("后台尚未连接，当前显示演示商品。完成 Supabase 配置后即可在后台管理。");
+      useDemo("后台尚未连接，当前显示演示商品。");
       return;
     }
 
     state.supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-
     try {
-      await Promise.all([loadSettings(), loadProducts()]);
+      await Promise.all([loadSettings(), loadCategories(), loadProducts()]);
       state.usingDemo = false;
       $("modeNotice").hidden = true;
       subscribeChanges();
@@ -86,6 +92,7 @@
       updateSearchClear();
       renderProducts();
     });
+
     $("sortMode").addEventListener("change", (event) => {
       state.sortMode = event.currentTarget.value;
       renderProducts();
@@ -98,7 +105,7 @@
         const id = Number(actionElement.dataset.id);
         const index = Number(actionElement.dataset.index);
         const handlers = {
-          "scroll-products": () => $("products").scrollIntoView({behavior:"smooth"}),
+          "scroll-products": () => $("products").scrollIntoView({behavior: "smooth"}),
           "open-selected": openSelected,
           "share-selected": shareSelected,
           "consult-selected": consultSelected,
@@ -106,7 +113,7 @@
           "close-selected": () => closeSheet("selectedShade"),
           "share-current": shareCurrent,
           "add-current": addCurrent,
-          "set-category": () => setCategory(actionElement.dataset.category),
+          "set-category": () => setCategory(actionElement.dataset.categoryKey),
           "show-detail": () => showDetail(id),
           "toggle-select": () => toggleSelect(id),
           "remove-selected": () => removeSelected(id),
@@ -116,7 +123,7 @@
           "previous-image": () => moveLightbox(-1),
           "next-image": () => moveLightbox(1),
           "clear-search": clearSearch,
-          "back-top": () => window.scrollTo({top:0,behavior:"smooth"})
+          "back-top": () => window.scrollTo({top: 0, behavior: "smooth"})
         };
         handlers[action]?.();
       }
@@ -133,6 +140,13 @@
       if (event.key === "ArrowRight") moveLightbox(1);
     });
 
+    document.addEventListener("error", (event) => {
+      const image = event.target.closest?.("img[data-product-image]");
+      if (!image) return;
+      image.hidden = true;
+      image.parentElement?.querySelector(".image-fallback")?.removeAttribute("hidden");
+    }, true);
+
     $("imageLightbox").addEventListener("touchstart", (event) => {
       state.lightboxTouchStartX = event.changedTouches[0]?.clientX ?? null;
     }, {passive: true});
@@ -148,22 +162,39 @@
 
     window.addEventListener("scroll", () => {
       $("backTop").classList.toggle("show", window.scrollY > 650);
-    }, {passive:true});
+    }, {passive: true});
   }
 
   async function loadSettings() {
-    const { data, error } = await state.supabase
-      .from("store_settings")
-      .select("*")
-      .eq("id", 1)
-      .maybeSingle();
+    const {data, error} = await state.supabase.from("store_settings").select("*").eq("id", 1).maybeSingle();
     if (error) throw error;
     state.settings = {...DEFAULT_SETTINGS, ...(data || {})};
     applySettings();
   }
 
+  async function loadCategories() {
+    const {data, error} = await state.supabase
+      .from("categories")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", {ascending: true})
+      .order("id", {ascending: true});
+
+    if (error) {
+      if (isMissingTable(error, "categories")) {
+        state.categoriesReady = false;
+        state.categories = [];
+        return;
+      }
+      throw error;
+    }
+
+    state.categoriesReady = true;
+    state.categories = data || [];
+  }
+
   async function loadProducts() {
-    const { data, error } = await state.supabase
+    const {data, error} = await state.supabase
       .from("products")
       .select("*")
       .eq("is_active", true)
@@ -171,6 +202,7 @@
       .order("id", {ascending: false});
     if (error) throw error;
     state.products = data || [];
+    normalizeActiveCategory();
     renderCategories();
     renderFeatured();
     renderProducts();
@@ -178,11 +210,21 @@
 
   function subscribeChanges() {
     try {
-      state.supabase
+      const channel = state.supabase
         .channel("shop-public-updates")
         .on("postgres_changes", {event: "*", schema: "public", table: "products"}, loadProducts)
-        .on("postgres_changes", {event: "*", schema: "public", table: "store_settings"}, loadSettings)
-        .subscribe();
+        .on("postgres_changes", {event: "*", schema: "public", table: "store_settings"}, loadSettings);
+
+      if (state.categoriesReady) {
+        channel.on("postgres_changes", {event: "*", schema: "public", table: "categories"}, async () => {
+          await loadCategories();
+          normalizeActiveCategory();
+          renderCategories();
+          renderFeatured();
+          renderProducts();
+        });
+      }
+      channel.subscribe();
     } catch (error) {
       console.warn("Realtime subscription skipped:", error);
     }
@@ -191,6 +233,8 @@
   function useDemo(message) {
     state.usingDemo = true;
     state.settings = {...DEFAULT_SETTINGS};
+    state.categories = DEMO_CATEGORIES.map((item) => ({...item}));
+    state.categoriesReady = true;
     state.products = DEMO_PRODUCTS.map((item) => ({...item}));
     applySettings();
     renderCategories();
@@ -218,45 +262,93 @@
     $("groupLink").href = telegramLink(s.group_username);
   }
 
-  function normalizeUsername(value) {
-    return String(value || "").trim().replace(/^@/, "");
+  function categoryRegistry() {
+    const registered = state.categories.map((category) => ({
+      ...category,
+      key: `id:${category.id}`,
+      count: state.products.filter((product) => Number(product.category_id) === Number(category.id) || (!product.category_id && product.category === category.name)).length
+    }));
+
+    const registeredNames = new Set(registered.map((item) => item.name));
+    const registeredIds = new Set(registered.map((item) => Number(item.id)));
+    const legacyNames = [...new Set(state.products
+      .filter((product) => !registeredIds.has(Number(product.category_id)) && !registeredNames.has(product.category || "其他"))
+      .map((product) => product.category || "其他"))]
+      .sort((a, b) => a.localeCompare(b, "zh-CN"));
+
+    const legacy = legacyNames.map((name, index) => ({
+      id: null,
+      key: `name:${name}`,
+      name,
+      icon: "•",
+      description: "",
+      sort_order: 10000 + index,
+      is_active: true,
+      count: state.products.filter((product) => (product.category || "其他") === name).length
+    }));
+
+    return [...registered, ...legacy].filter((item) => item.count > 0);
   }
 
-  function telegramLink(username) {
-    const clean = normalizeUsername(username);
-    return clean ? `https://t.me/${clean}` : "#";
+  function categoryForProduct(product) {
+    return state.categories.find((item) => Number(item.id) === Number(product.category_id))
+      || state.categories.find((item) => item.name === (product.category || "其他"))
+      || {id: null, name: product.category || "其他", icon: "•", description: ""};
   }
 
-  function categories() {
-    return ["全部", ...new Set(state.products.map((product) => product.category || "其他"))];
+  function productMatchesCategory(product, categoryKey) {
+    if (categoryKey === "all") return true;
+    if (categoryKey.startsWith("id:")) return Number(product.category_id) === Number(categoryKey.slice(3));
+    if (categoryKey.startsWith("name:")) return (product.category || "其他") === categoryKey.slice(5);
+    return true;
+  }
+
+  function normalizeActiveCategory() {
+    if (state.activeCategory === "all") return;
+    const exists = categoryRegistry().some((item) => item.key === state.activeCategory);
+    if (!exists) state.activeCategory = "all";
   }
 
   function renderCategories() {
-    $("cats").innerHTML = categories().map((category) => {
-      const count = category === "全部"
-        ? state.products.length
-        : state.products.filter((item) => (item.category || "其他") === category).length;
-      return `
-        <button class="cat ${category === state.activeCategory ? "active" : ""}" type="button" data-action="set-category" data-category="${escapeHtml(category)}">
-          <span>${escapeHtml(category)}</span><small>${count}</small>
-        </button>`;
-    }).join("");
+    const categories = categoryRegistry();
+    const buttons = [{key: "all", name: "全部", icon: "▦", description: "", count: state.products.length}, ...categories];
+    $("cats").innerHTML = buttons.map((category) => `
+      <button class="cat ${category.key === state.activeCategory ? "active" : ""}" type="button" data-action="set-category" data-category-key="${escapeAttribute(category.key)}">
+        <span class="cat-icon">${escapeHtml(category.icon || "•")}</span>
+        <span>${escapeHtml(category.name)}</span>
+        <small>${category.count}</small>
+      </button>`).join("");
+
+    const active = buttons.find((item) => item.key === state.activeCategory);
+    const intro = $("categoryIntro");
+    if (active && active.key !== "all" && active.description) {
+      intro.innerHTML = `<b>${escapeHtml(active.icon || "")}${active.icon ? " " : ""}${escapeHtml(active.name)}</b><span>${escapeHtml(active.description)}</span>`;
+      intro.hidden = false;
+    } else {
+      intro.hidden = true;
+      intro.innerHTML = "";
+    }
   }
 
-  function setCategory(category) {
-    state.activeCategory = category;
+  function setCategory(categoryKey) {
+    state.activeCategory = categoryKey || "all";
     renderCategories();
     renderProducts();
   }
 
   function renderFeatured() {
-    const featured = state.products.filter((product) => product.is_featured).slice(0, 6);
+    const featured = state.products
+      .filter((product) => product.is_featured)
+      .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))
+      .slice(0, 8);
+
     const section = $("featuredSection");
     if (!featured.length) {
       section.hidden = true;
       $("featuredGrid").innerHTML = "";
       return;
     }
+
     section.hidden = false;
     $("featuredGrid").innerHTML = featured.map((product) => productCard(product, true)).join("");
   }
@@ -264,7 +356,7 @@
   function renderProducts() {
     const query = $("search").value.trim().toLowerCase();
     let filtered = state.products.filter((product) => {
-      const categoryMatch = state.activeCategory === "全部" || product.category === state.activeCategory;
+      const categoryMatch = productMatchesCategory(product, state.activeCategory);
       const haystack = `${product.name || ""} ${product.category || ""} ${product.description || ""} ${product.price_text || ""} ${product.stock_text || ""}`.toLowerCase();
       return categoryMatch && haystack.includes(query);
     });
@@ -278,27 +370,27 @@
 
   function sortProducts(list, mode) {
     const result = [...list];
-    if (mode === "name") return result.sort((a,b) => String(a.name).localeCompare(String(b.name), "zh-CN"));
-    if (mode === "latest") return result.sort((a,b) => Number(b.id) - Number(a.id));
-    if (mode === "order") return result.sort((a,b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
-    return result.sort((a,b) => Number(Boolean(b.is_featured)) - Number(Boolean(a.is_featured)) || Number(a.sort_order || 0) - Number(b.sort_order || 0));
+    if (mode === "name") return result.sort((a, b) => String(a.name).localeCompare(String(b.name), "zh-CN"));
+    if (mode === "latest") return result.sort((a, b) => Number(b.id) - Number(a.id));
+    if (mode === "order") return result.sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+    return result.sort((a, b) => Number(Boolean(b.is_featured)) - Number(Boolean(a.is_featured)) || Number(a.sort_order || 0) - Number(b.sort_order || 0));
   }
 
   function productCard(product, compact = false) {
     const selected = state.selected.includes(Number(product.id));
     const imageCount = productImages(product).length;
+    const category = categoryForProduct(product);
     return `
       <article class="card ${compact ? "featured-card" : ""}">
-        <button class="pic product-cover" type="button" data-action="show-detail" data-id="${Number(product.id)}" aria-label="查看${escapeAttribute(product.name)}详情">
+        <button class="product-media" type="button" data-action="show-detail" data-id="${Number(product.id)}" aria-label="查看${escapeAttribute(product.name)}详情">
           ${productVisual(product)}
-          <span class="visual-shade"></span>
           ${product.is_featured ? '<span class="featured-badge">推荐</span>' : ""}
           ${imageCount > 1 ? `<span class="image-count">▧ ${imageCount}</span>` : ""}
         </button>
         <div class="cardBody">
           <h3>${escapeHtml(product.name)}</h3>
           <div class="meta">
-            <span class="pill category-pill">${escapeHtml(product.category || "其他")}</span>
+            <span class="pill category-pill">${escapeHtml(category.icon || "")} ${escapeHtml(category.name)}</span>
             <span class="pill stock-pill">${escapeHtml(product.stock_text || "咨询库存")}</span>
           </div>
           <div class="price">${escapeHtml(product.price_text || "实时询价")}</div>
@@ -322,6 +414,7 @@
         urls = raw.split("\n");
       }
     }
+
     urls = urls.map((url) => String(url || "").trim()).filter(Boolean);
     const legacy = String(product?.image_url || "").trim();
     if (legacy) {
@@ -333,18 +426,12 @@
 
   function productVisual(product) {
     const image = productImages(product)[0];
-    if (image) return imageFrame(image, product.name, true);
-    return `<span class="emoji-visual">${escapeHtml(product.emoji || "🥩")}</span>`;
-  }
-
-  function imageFrame(url, alt, lazy = false) {
-    const loading = lazy ? ' loading="lazy"' : "";
-    const safeUrl = escapeAttribute(url);
-    const safeAlt = escapeAttribute(alt || "商品图片");
+    const emoji = escapeHtml(product.emoji || "🥩");
+    if (!image) return `<span class="image-fallback emoji-only">${emoji}</span>`;
     return `
-      <span class="image-frame" aria-hidden="true">
-        <img class="image-backdrop" src="${safeUrl}" alt=""${loading} />
-        <img class="image-main" src="${safeUrl}" alt="${safeAlt}"${loading} />
+      <span class="image-stage">
+        <img class="product-image" data-product-image src="${escapeAttribute(image)}" alt="${escapeAttribute(product.name)}" loading="lazy" decoding="async" />
+        <span class="image-fallback" hidden>${emoji}</span>
       </span>`;
   }
 
@@ -362,13 +449,15 @@
     state.current = state.products.find((product) => Number(product.id) === id);
     if (!state.current) return;
     const product = state.current;
+    const category = categoryForProduct(product);
     state.detailImages = productImages(product);
     state.detailImageIndex = 0;
+
     $("detailName").textContent = product.name || "";
     renderDetailGallery();
     $("detailMeta").innerHTML = `
       ${product.is_featured ? '<span class="pill featured-pill">本店推荐</span>' : ""}
-      <span class="pill">${escapeHtml(product.category || "其他")}</span>
+      <span class="pill">${escapeHtml(category.icon || "")} ${escapeHtml(category.name)}</span>
       <span class="pill">${escapeHtml(product.stock_text || "咨询库存")}</span>`;
     $("detailPrice").textContent = product.price_text || "实时询价";
     $("detailDesc").textContent = product.description || "暂无详细介绍";
@@ -380,8 +469,9 @@
     const images = state.detailImages;
     const mainButton = $("detailMainImage");
     const thumbs = $("detailThumbs");
+
     if (!images.length) {
-      $("detailPic").innerHTML = `<span class="emoji-visual">${escapeHtml(product?.emoji || "🥩")}</span>`;
+      $("detailPic").innerHTML = `<span class="image-fallback detail-fallback">${escapeHtml(product?.emoji || "🥩")}</span>`;
       $("zoomHint").hidden = true;
       mainButton.disabled = true;
       mainButton.classList.add("no-image");
@@ -389,13 +479,14 @@
       thumbs.innerHTML = "";
       return;
     }
+
     mainButton.disabled = false;
     mainButton.classList.remove("no-image");
     $("zoomHint").hidden = false;
     setDetailImage(Math.min(state.detailImageIndex, images.length - 1));
     thumbs.innerHTML = images.map((url, index) => `
       <button class="detail-thumb ${index === state.detailImageIndex ? "active" : ""}" type="button" data-action="set-detail-image" data-index="${index}" aria-label="查看第 ${index + 1} 张商品图片">
-        <img src="${escapeAttribute(url)}" alt="${escapeAttribute(product?.name || "商品")}图片 ${index + 1}" loading="lazy" />
+        <img src="${escapeAttribute(url)}" alt="${escapeAttribute(product?.name || "商品")}图片 ${index + 1}" loading="lazy" decoding="async" />
       </button>`).join("");
     thumbs.hidden = images.length <= 1;
   }
@@ -404,7 +495,11 @@
     if (!state.detailImages.length || !Number.isInteger(index) || index < 0 || index >= state.detailImages.length) return;
     state.detailImageIndex = index;
     const url = state.detailImages[index];
-    $("detailPic").innerHTML = imageFrame(url, state.current?.name || "商品图片", false);
+    $("detailPic").innerHTML = `
+      <span class="detail-image-stage">
+        <img data-product-image src="${escapeAttribute(url)}" alt="${escapeAttribute(state.current?.name || "商品图片")}" decoding="async" />
+        <span class="image-fallback" hidden>${escapeHtml(state.current?.emoji || "🥩")}</span>
+      </span>`;
     $("detailThumbs").querySelectorAll(".detail-thumb").forEach((button, buttonIndex) => {
       button.classList.toggle("active", buttonIndex === index);
     });
@@ -460,10 +555,11 @@
   }
 
   function productText(product) {
+    const category = categoryForProduct(product);
     return [
       `【${state.settings.shop_name}】`,
       `商品：${product.name}`,
-      `分类：${product.category || "其他"}`,
+      `分类：${category.name}`,
       `价格：${product.price_text || "实时询价"}`,
       `库存：${product.stock_text || "咨询库存"}`,
       pageUrl()
@@ -471,7 +567,9 @@
   }
 
   function selectedProducts() {
-    return state.selected.map((id) => state.products.find((product) => Number(product.id) === id)).filter(Boolean);
+    return state.selected
+      .map((id) => state.products.find((product) => Number(product.id) === id))
+      .filter(Boolean);
   }
 
   function selectedText() {
@@ -491,6 +589,7 @@
       toast("请先选择商品");
       return;
     }
+
     try {
       if (navigator.share) {
         await navigator.share({title: state.settings.shop_name, text, url: pageUrl()});
@@ -521,6 +620,7 @@
     } catch {
       toast("正在打开客服");
     }
+
     const bot = normalizeUsername(state.settings.bot_username);
     if (!bot) {
       toast("尚未配置客服账号");
@@ -532,16 +632,19 @@
   function openSelected() {
     const list = selectedProducts();
     $("selectedList").innerHTML = list.length
-      ? list.map((product) => `
-          <div class="listItem">
-            <div class="selected-thumb">${productVisual(product)}</div>
-            <div class="selected-info">
-              <b>${escapeHtml(product.name)}</b>
-              <div class="mini">${escapeHtml(product.price_text || "实时询价")} · ${escapeHtml(product.stock_text || "咨询库存")}</div>
-            </div>
-            <button class="remove" type="button" data-action="remove-selected" data-id="${Number(product.id)}">移除</button>
-          </div>`).join("")
-      : '<div class="empty"><b>暂未选择商品</b><span>在商品卡片点击“加入选品”即可</span></div>';
+      ? list.map((product) => {
+          const image = productImages(product)[0];
+          return `
+            <div class="listItem">
+              <div class="selected-thumb">${image ? `<img src="${escapeAttribute(image)}" alt="${escapeAttribute(product.name)}" />` : escapeHtml(product.emoji || "🥩")}</div>
+              <div class="selected-main">
+                <b>${escapeHtml(product.name)}</b>
+                <div class="mini">${escapeHtml(product.price_text || "实时询价")} · ${escapeHtml(product.stock_text || "咨询库存")}</div>
+              </div>
+              <button class="remove" type="button" data-action="remove-selected" data-id="${Number(product.id)}">移除</button>
+            </div>`;
+        }).join("")
+      : '<div class="empty"><b>暂未选择商品</b><span>从商品列表中加入感兴趣的商品</span></div>';
     $("selectedShade").classList.add("show");
   }
 
@@ -579,9 +682,8 @@
   }
 
   function updateCount() {
-    const count = state.selected.length;
-    $("topCount").textContent = String(count);
-    $("bottomCount").textContent = count ? `已选 ${count} 件` : "分享选品";
+    $("topCount").textContent = String(state.selected.length);
+    $("bottomCount").textContent = state.selected.length ? `分享选品（${state.selected.length}）` : "分享选品";
   }
 
   function closeSheet(id) {
@@ -589,10 +691,7 @@
   }
 
   async function copyText(text) {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return;
-    }
+    if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
     const textarea = document.createElement("textarea");
     textarea.value = text;
     textarea.style.position = "fixed";
@@ -604,8 +703,22 @@
     if (!copied) throw new Error("Copy failed");
   }
 
+  function normalizeUsername(value) {
+    return String(value || "").trim().replace(/^@/, "");
+  }
+
+  function telegramLink(username) {
+    const clean = normalizeUsername(username);
+    return clean ? `https://t.me/${clean}` : "#";
+  }
+
   function pageUrl() {
     return window.APP_CONFIG?.pageUrl || window.location.href.split("?")[0];
+  }
+
+  function isMissingTable(error, table) {
+    const message = String(error?.message || "");
+    return error?.code === "42P01" || message.includes(`relation \"public.${table}\" does not exist`) || message.includes(`Could not find the table 'public.${table}'`);
   }
 
   function toast(message) {
@@ -613,7 +726,7 @@
     element.textContent = message;
     element.classList.add("show");
     clearTimeout(window.__toastTimer);
-    window.__toastTimer = window.setTimeout(() => element.classList.remove("show"), 1800);
+    window.__toastTimer = window.setTimeout(() => element.classList.remove("show"), 2100);
   }
 
   function escapeHtml(value) {
