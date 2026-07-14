@@ -2,76 +2,768 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
-  >
-
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
   <title>ice_store</title>
-
-  <!-- Telegram Mini App 官方脚本 -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
   <style>
+    :root {
+      --bg: var(--tg-theme-bg-color, #0b1220);
+      --surface: var(--tg-theme-secondary-bg-color, #121b2e);
+      --surface-2: rgba(255, 255, 255, 0.06);
+      --text: var(--tg-theme-text-color, #f7f9fc);
+      --muted: var(--tg-theme-hint-color, #94a3b8);
+      --accent: var(--tg-theme-button-color, #3b82f6);
+      --accent-text: var(--tg-theme-button-text-color, #ffffff);
+      --line: rgba(148, 163, 184, 0.18);
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --radius: 18px;
+      --shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
     body {
       margin: 0;
-      padding: 24px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--tg-theme-bg-color, #ffffff);
-      color: var(--tg-theme-text-color, #111111);
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 80% -10%, rgba(59,130,246,.22), transparent 32%),
+        var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      padding-bottom: calc(104px + env(safe-area-inset-bottom));
     }
 
-    .card {
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+
+    .app {
+      width: min(720px, 100%);
+      margin: 0 auto;
+      padding: max(18px, env(safe-area-inset-top)) 16px 24px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+
+    .logo {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      border-radius: 15px;
+      color: #fff;
+      font-size: 24px;
+      background: linear-gradient(135deg, #60a5fa, #2563eb);
+      box-shadow: 0 10px 24px rgba(37, 99, 235, .3);
+    }
+
+    .brand h1 { margin: 0; font-size: 20px; letter-spacing: .2px; }
+    .brand p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 20px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
       padding: 22px;
-      border-radius: 18px;
-      background: var(--tg-theme-secondary-bg-color, #f2f2f2);
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(37,99,235,.96), rgba(99,102,241,.9));
+      box-shadow: var(--shadow);
     }
 
-    h1 {
-      margin-top: 0;
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      right: -72px;
+      top: -88px;
+      background: rgba(255,255,255,.16);
     }
 
-    button {
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.15);
+      font-size: 12px;
+      color: #fff;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      box-shadow: 0 0 0 4px rgba(74,222,128,.18);
+    }
+
+    .hero h2 { margin: 16px 0 7px; font-size: 25px; color: #fff; }
+    .hero p { margin: 0; max-width: 82%; color: rgba(255,255,255,.82); line-height: 1.6; font-size: 14px; }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 14px 0 22px;
+    }
+
+    .feature {
+      padding: 13px 8px;
+      text-align: center;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+      border-radius: 16px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .feature b { display: block; margin-bottom: 5px; color: var(--text); font-size: 17px; }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 22px 2px 12px;
+    }
+
+    .section-head h3 { margin: 0; font-size: 19px; }
+    .section-head span { color: var(--muted); font-size: 12px; }
+
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      height: 48px;
+      border-radius: 15px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      margin-bottom: 12px;
+    }
+
+    .search input {
       width: 100%;
-      border: none;
-      border-radius: 12px;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font-size: 15px;
+    }
+
+    .search input::placeholder { color: var(--muted); }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 2px 0 8px;
+      scrollbar-width: none;
+    }
+
+    .tabs::-webkit-scrollbar { display: none; }
+
+    .tab {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 9px 14px;
+      color: var(--muted);
+      background: var(--surface-2);
+    }
+
+    .tab.active {
+      color: var(--accent-text);
+      background: var(--accent);
+      border-color: transparent;
+    }
+
+    .products {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .product {
+      display: flex;
+      flex-direction: column;
+      min-height: 216px;
       padding: 15px;
-      margin-top: 16px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    }
+
+    .product-icon {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      font-size: 25px;
+      background: linear-gradient(135deg, rgba(59,130,246,.18), rgba(99,102,241,.18));
+    }
+
+    .badge {
+      align-self: flex-start;
+      margin: 10px 0 7px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: var(--success);
+      background: rgba(34,197,94,.1);
+      font-size: 10px;
+    }
+
+    .product h4 { margin: 0; font-size: 15px; line-height: 1.35; }
+    .product .desc { margin: 6px 0 14px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+    .product-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: auto;
+    }
+
+    .price { font-weight: 750; font-size: 17px; }
+    .price small { color: var(--muted); font-size: 10px; font-weight: 500; }
+
+    .add-btn {
+      width: 39px;
+      height: 39px;
+      border: 0;
+      border-radius: 12px;
+      color: var(--accent-text);
+      background: var(--accent);
+      font-size: 22px;
+    }
+
+    .empty {
+      grid-column: 1 / -1;
+      padding: 36px 18px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+    }
+
+    .service-card {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .service-card + .service-card { margin-top: 10px; }
+    .service-card .emoji { font-size: 25px; }
+    .service-card h4 { margin: 0 0 4px; font-size: 14px; }
+    .service-card p { margin: 0; color: var(--muted); font-size: 12px; }
+
+    .cart-bar {
+      position: fixed;
+      z-index: 30;
+      left: 50%;
+      bottom: max(14px, env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      width: min(calc(100% - 28px), 690px);
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 11px 12px 11px 16px;
+      border-radius: 19px;
+      color: #fff;
+      background: rgba(15, 23, 42, .94);
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 16px 48px rgba(0,0,0,.35);
+      backdrop-filter: blur(16px);
+    }
+
+    .cart-bar.show { display: flex; }
+    .cart-info b { display: block; font-size: 15px; }
+    .cart-info span { color: #b8c3d5; font-size: 12px; }
+
+    .checkout-btn {
+      border: 0;
+      border-radius: 13px;
+      padding: 12px 18px;
+      color: var(--accent-text);
+      background: var(--accent);
+      font-weight: 700;
+    }
+
+    .overlay {
+      position: fixed;
+      z-index: 50;
+      inset: 0;
+      display: none;
+      align-items: flex-end;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(3px);
+    }
+
+    .overlay.show { display: flex; }
+
+    .sheet {
+      width: min(720px, 100%);
+      max-height: 88vh;
+      margin: 0 auto;
+      overflow: auto;
+      padding: 10px 16px calc(22px + env(safe-area-inset-bottom));
+      border-radius: 24px 24px 0 0;
+      color: var(--text);
+      background: var(--bg);
+      box-shadow: 0 -20px 60px rgba(0,0,0,.35);
+    }
+
+    .handle {
+      width: 42px;
+      height: 5px;
+      margin: 2px auto 15px;
+      border-radius: 99px;
+      background: var(--line);
+    }
+
+    .sheet-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .sheet-head h3 { margin: 0; }
+    .close-btn { border: 0; background: transparent; color: var(--muted); font-size: 24px; }
+
+    .cart-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      padding: 13px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .cart-item h4 { margin: 0 0 5px; font-size: 14px; }
+    .cart-item p { margin: 0; color: var(--muted); font-size: 12px; }
+
+    .qty { display: flex; align-items: center; gap: 10px; }
+    .qty button {
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      color: var(--text);
+      background: var(--surface-2);
+    }
+
+    .field { margin-top: 14px; }
+    .field label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 12px; }
+    .field input {
+      width: 100%;
+      height: 48px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      outline: none;
+      padding: 0 13px;
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    .total {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 18px 0 12px;
       font-size: 16px;
-      background: var(--tg-theme-button-color, #2481cc);
-      color: var(--tg-theme-button-text-color, #ffffff);
+    }
+
+    .total strong { font-size: 22px; }
+
+    .submit-btn {
+      width: 100%;
+      min-height: 50px;
+      border: 0;
+      border-radius: 15px;
+      color: var(--accent-text);
+      background: var(--accent);
+      font-weight: 750;
+    }
+
+    .notice {
+      margin-top: 10px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 100;
+      left: 50%;
+      top: calc(18px + env(safe-area-inset-top));
+      transform: translate(-50%, -20px);
+      opacity: 0;
+      pointer-events: none;
+      padding: 11px 16px;
+      border-radius: 13px;
+      color: #fff;
+      background: rgba(15, 23, 42, .94);
+      transition: .2s ease;
+      box-shadow: var(--shadow);
+      font-size: 13px;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 380px) {
+      .products { grid-template-columns: 1fr; }
+      .product { min-height: 190px; }
     }
   </style>
 </head>
-
 <body>
-  <div class="card">
-    <h1>欢迎来到 ice_store</h1>
-    <p>全天 24 小时开放，随时接受您的订单。</p>
-    <p id="user">正在读取 Telegram 用户信息……</p>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">❄️</div>
+        <div>
+          <h1>ice_store</h1>
+          <p id="hello">正在连接 Telegram…</p>
+        </div>
+      </div>
+      <button class="icon-btn" id="supportBtn" aria-label="联系客服">💬</button>
+    </header>
 
-    <button onclick="submitOrder()">开始下单</button>
+    <section class="hero">
+      <span class="status"><span class="dot"></span>24 小时在线接单</span>
+      <h2>数字服务，快速交付</h2>
+      <p>选择商品并提交订单，客服将在 Telegram 内确认价格、收款和交付信息。</p>
+    </section>
+
+    <section class="features" aria-label="服务特点">
+      <div class="feature"><b>⚡</b>快速响应</div>
+      <div class="feature"><b>🔐</b>隐私保护</div>
+      <div class="feature"><b>🧾</b>订单留档</div>
+    </section>
+
+    <div class="section-head">
+      <h3>商品中心</h3>
+      <span id="productCount"></span>
+    </div>
+
+    <div class="search">
+      <span>⌕</span>
+      <input id="searchInput" type="search" placeholder="搜索商品或服务" autocomplete="off">
+    </div>
+
+    <nav class="tabs" id="tabs" aria-label="商品分类"></nav>
+    <section class="products" id="products"></section>
+
+    <div class="section-head">
+      <h3>服务说明</h3>
+      <span>下单前请阅读</span>
+    </div>
+
+    <div class="service-card">
+      <div class="emoji">📌</div>
+      <div><h4>提交订单不等于付款</h4><p>客服确认商品信息和实时价格后，再向你提供付款方式。</p></div>
+    </div>
+    <div class="service-card">
+      <div class="emoji">✅</div>
+      <div><h4>请核对账号信息</h4><p>涉及用户名或收货账号时，请确认输入准确，避免交付错误。</p></div>
+    </div>
+    <div class="service-card">
+      <div class="emoji">🛟</div>
+      <div><h4>遇到问题联系人工客服</h4><p>点击右上角消息按钮，可随时返回机器人会话咨询。</p></div>
+    </div>
+  </main>
+
+  <div class="cart-bar" id="cartBar">
+    <div class="cart-info">
+      <b id="cartCount">0 件商品</b>
+      <span id="cartTotal">合计 $0.00</span>
+    </div>
+    <button class="checkout-btn" id="openCartBtn">查看购物车</button>
   </div>
 
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="购物车">
+    <section class="sheet">
+      <div class="handle"></div>
+      <div class="sheet-head">
+        <h3>确认订单</h3>
+        <button class="close-btn" id="closeSheetBtn" aria-label="关闭">×</button>
+      </div>
+      <div id="cartItems"></div>
+      <div class="field">
+        <label for="contactInput">联系用户名（可自动读取）</label>
+        <input id="contactInput" placeholder="例如 @username">
+      </div>
+      <div class="field">
+        <label for="noteInput">订单备注（选填）</label>
+        <input id="noteInput" placeholder="例如收货账号、规格或其他要求">
+      </div>
+      <div class="total"><span>订单合计</span><strong id="sheetTotal">$0.00</strong></div>
+      <button class="submit-btn" id="submitBtn">生成订单并联系客服</button>
+      <p class="notice">提交后会复制订单内容并打开机器人会话，请在聊天框粘贴发送。</p>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
   <script>
-    const tg = window.Telegram.WebApp;
+    const BOT_USERNAME = "TJ_ice_CS_bot";
 
-    tg.ready();
-    tg.expand();
+    // 在这里修改商品、价格、分类和说明。
+    const PRODUCTS = [
+      { id: "premium-3", category: "Premium", icon: "💎", name: "Telegram Premium 3个月", desc: "适合短期体验，提交后由客服确认收货账号。", price: 13.99, badge: "热门" },
+      { id: "premium-6", category: "Premium", icon: "👑", name: "Telegram Premium 6个月", desc: "中长期使用方案，客服确认后安排交付。", price: 19.99, badge: "推荐" },
+      { id: "premium-12", category: "Premium", icon: "🏆", name: "Telegram Premium 12个月", desc: "长期方案，适合稳定使用。", price: 35.99, badge: "高性价比" },
+      { id: "stars-100", category: "Stars", icon: "⭐", name: "Telegram Stars 100", desc: "用于支持机器人和 Mini App 内的数字内容。", price: 1.99, badge: "即时咨询" },
+      { id: "stars-500", category: "Stars", icon: "🌟", name: "Telegram Stars 500", desc: "适合中等用量，提交订单后确认实时价格。", price: 8.99, badge: "常用" },
+      { id: "stars-1000", category: "Stars", icon: "✨", name: "Telegram Stars 1000", desc: "大额套餐，客服确认后安排。", price: 16.99, badge: "套餐" },
+      { id: "custom", category: "其他服务", icon: "🧩", name: "自定义需求", desc: "未找到需要的商品？提交需求由客服单独报价。", price: 0, badge: "人工报价" }
+    ];
 
-    const user = tg.initDataUnsafe?.user;
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      try { tg.setHeaderColor("secondary_bg_color"); } catch (_) {}
+    }
 
+    const state = {
+      category: "全部",
+      search: "",
+      cart: JSON.parse(localStorage.getItem("ice_store_cart") || "{}")
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const money = (value) => value > 0 ? `$${value.toFixed(2)}` : "人工报价";
+
+    const user = tg?.initDataUnsafe?.user;
     if (user) {
-      document.getElementById("user").textContent =
-        `您好，${user.first_name || "Telegram 用户"}`;
+      $("hello").textContent = `你好，${user.first_name || "Telegram 用户"}`;
+      $("contactInput").value = user.username ? `@${user.username}` : String(user.id || "");
     } else {
-      document.getElementById("user").textContent =
-        "请在 Telegram 内打开此小程序";
+      $("hello").textContent = "欢迎光临，点击商品开始下单";
     }
 
-    function submitOrder() {
-      tg.showAlert("下单功能正在建设中");
+    function haptic(type = "light") {
+      try { tg?.HapticFeedback?.impactOccurred(type); } catch (_) {}
     }
+
+    function showToast(message) {
+      const toast = $("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    function saveCart() {
+      localStorage.setItem("ice_store_cart", JSON.stringify(state.cart));
+      renderCartBar();
+    }
+
+    function getCartRows() {
+      return Object.entries(state.cart)
+        .map(([id, qty]) => ({ product: PRODUCTS.find(p => p.id === id), qty }))
+        .filter(row => row.product && row.qty > 0);
+    }
+
+    function getTotal() {
+      return getCartRows().reduce((sum, row) => sum + row.product.price * row.qty, 0);
+    }
+
+    function renderTabs() {
+      const categories = ["全部", ...new Set(PRODUCTS.map(p => p.category))];
+      $("tabs").innerHTML = categories.map(category => `
+        <button class="tab ${state.category === category ? "active" : ""}" data-category="${category}">${category}</button>
+      `).join("");
+
+      $("tabs").querySelectorAll(".tab").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.category = btn.dataset.category;
+          haptic();
+          renderTabs();
+          renderProducts();
+        });
+      });
+    }
+
+    function renderProducts() {
+      const keyword = state.search.trim().toLowerCase();
+      const list = PRODUCTS.filter(product => {
+        const categoryOk = state.category === "全部" || product.category === state.category;
+        const searchOk = !keyword || `${product.name} ${product.desc} ${product.category}`.toLowerCase().includes(keyword);
+        return categoryOk && searchOk;
+      });
+
+      $("productCount").textContent = `${list.length} 项可选`;
+      $("products").innerHTML = list.length ? list.map(product => `
+        <article class="product">
+          <div class="product-icon">${product.icon}</div>
+          <span class="badge">${product.badge}</span>
+          <h4>${product.name}</h4>
+          <p class="desc">${product.desc}</p>
+          <div class="product-foot">
+            <span class="price">${money(product.price)} ${product.price > 0 ? "<small>USDT</small>" : ""}</span>
+            <button class="add-btn" data-add="${product.id}" aria-label="添加 ${product.name}">+</button>
+          </div>
+        </article>
+      `).join("") : `<div class="empty">没有找到匹配的商品</div>`;
+
+      $("products").querySelectorAll("[data-add]").forEach(btn => {
+        btn.addEventListener("click", () => addToCart(btn.dataset.add));
+      });
+    }
+
+    function addToCart(id) {
+      state.cart[id] = (state.cart[id] || 0) + 1;
+      saveCart();
+      haptic("medium");
+      showToast("已加入购物车");
+    }
+
+    function changeQty(id, delta) {
+      state.cart[id] = (state.cart[id] || 0) + delta;
+      if (state.cart[id] <= 0) delete state.cart[id];
+      saveCart();
+      renderCartSheet();
+      haptic();
+    }
+
+    function renderCartBar() {
+      const rows = getCartRows();
+      const count = rows.reduce((sum, row) => sum + row.qty, 0);
+      $("cartCount").textContent = `${count} 件商品`;
+      $("cartTotal").textContent = getTotal() > 0 ? `合计 ${money(getTotal())} USDT` : "包含人工报价商品";
+      $("cartBar").classList.toggle("show", count > 0);
+    }
+
+    function renderCartSheet() {
+      const rows = getCartRows();
+      $("cartItems").innerHTML = rows.length ? rows.map(({product, qty}) => `
+        <div class="cart-item">
+          <div>
+            <h4>${product.icon} ${product.name}</h4>
+            <p>${money(product.price)} × ${qty}</p>
+          </div>
+          <div class="qty">
+            <button data-minus="${product.id}">−</button>
+            <span>${qty}</span>
+            <button data-plus="${product.id}">+</button>
+          </div>
+        </div>
+      `).join("") : `<div class="empty">购物车还是空的</div>`;
+
+      $("sheetTotal").textContent = getTotal() > 0 ? `${money(getTotal())} USDT` : "人工报价";
+      $("submitBtn").disabled = rows.length === 0;
+
+      $("cartItems").querySelectorAll("[data-minus]").forEach(btn => btn.onclick = () => changeQty(btn.dataset.minus, -1));
+      $("cartItems").querySelectorAll("[data-plus]").forEach(btn => btn.onclick = () => changeQty(btn.dataset.plus, 1));
+    }
+
+    function openSheet() {
+      renderCartSheet();
+      $("overlay").classList.add("show");
+      document.body.style.overflow = "hidden";
+      haptic();
+    }
+
+    function closeSheet() {
+      $("overlay").classList.remove("show");
+      document.body.style.overflow = "";
+    }
+
+    function buildOrderText() {
+      const rows = getCartRows();
+      const orderNo = `ICE${Date.now().toString().slice(-10)}`;
+      const contact = $("contactInput").value.trim() || "未填写";
+      const note = $("noteInput").value.trim() || "无";
+      const items = rows.map(({product, qty}) => `• ${product.name} × ${qty}（${money(product.price)}）`).join("\n");
+      const total = getTotal() > 0 ? `${money(getTotal())} USDT` : "包含人工报价商品";
+      return `❄️ ice_store 新订单\n订单号：${orderNo}\n联系账号：${contact}\n\n商品：\n${items}\n\n合计：${total}\n备注：${note}\n\n请客服确认实时价格和交付信息。`;
+    }
+
+    async function submitOrder() {
+      if (!getCartRows().length) return;
+      const text = buildOrderText();
+      let copied = false;
+
+      try {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      } catch (_) {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.style.position = "fixed";
+        area.style.opacity = "0";
+        document.body.appendChild(area);
+        area.select();
+        copied = document.execCommand("copy");
+        area.remove();
+      }
+
+      haptic("heavy");
+      showToast(copied ? "订单已复制，正在打开客服" : "正在打开客服，请手动发送订单");
+      setTimeout(() => {
+        const link = `https://t.me/${BOT_USERNAME}`;
+        if (tg?.openTelegramLink) tg.openTelegramLink(link);
+        else window.location.href = link;
+      }, 450);
+    }
+
+    function openSupport() {
+      haptic();
+      const link = `https://t.me/${BOT_USERNAME}`;
+      if (tg?.openTelegramLink) tg.openTelegramLink(link);
+      else window.location.href = link;
+    }
+
+    $("searchInput").addEventListener("input", (event) => {
+      state.search = event.target.value;
+      renderProducts();
+    });
+    $("openCartBtn").addEventListener("click", openSheet);
+    $("closeSheetBtn").addEventListener("click", closeSheet);
+    $("overlay").addEventListener("click", (event) => { if (event.target === $("overlay")) closeSheet(); });
+    $("submitBtn").addEventListener("click", submitOrder);
+    $("supportBtn").addEventListener("click", openSupport);
+
+    renderTabs();
+    renderProducts();
+    renderCartBar();
   </script>
 </body>
 </html>
