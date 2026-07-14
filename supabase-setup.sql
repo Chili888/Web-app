@@ -14,6 +14,7 @@ create table if not exists public.products (
   name text not null,
   category text not null default '其他',
   image_url text,
+  image_urls text[] not null default '{}'::text[],
   emoji text not null default '🥩',
   price_text text not null default '实时询价',
   stock_text text not null default '咨询库存',
@@ -24,6 +25,16 @@ create table if not exists public.products (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- 已运行过旧版脚本的项目也可直接重跑，自动补充多图字段。
+alter table public.products
+  add column if not exists image_urls text[] not null default '{}'::text[];
+
+update public.products
+set image_urls = array[image_url]
+where image_url is not null
+  and btrim(image_url) <> ''
+  and coalesce(cardinality(image_urls), 0) = 0;
 
 create table if not exists public.store_settings (
   id smallint primary key default 1 check (id = 1),
@@ -217,6 +228,8 @@ using (
 );
 
 commit;
+
+notify pgrst, 'reload schema';
 
 -- 创建管理员账号后的授权步骤：
 -- 1. Supabase Dashboard → Authentication → Users → Add user。
