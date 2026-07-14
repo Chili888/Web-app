@@ -1,11 +1,74 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b1220">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
   <title>国内精品肉铺</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    :root {
-      --bg: var(--tg-theme-bg-color, #0b122
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#f4f6f8;color:#172033}.wrap{width:min(1100px,100%);margin:auto;padding:0 16px}.top{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border-bottom:1px solid #e8ebef}.topin{height:62px;display:flex;align-items:center;justify-content:space-between;gap:10px}.brand{display:flex;align-items:center;gap:10px;font-weight:800}.logo{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:#172033;color:#fff;font-size:21px}.mini{font-size:12px;color:#717b8b;font-weight:500}.topbtn{border:0;background:#172033;color:#fff;border-radius:11px;padding:10px 13px;font-weight:700}.hero{padding:25px 0 18px}.heroBox{background:linear-gradient(135deg,#101828,#29354a);color:#fff;border-radius:22px;padding:25px;box-shadow:0 16px 35px rgba(16,24,40,.16)}.tag{display:inline-block;padding:6px 9px;border-radius:999px;background:rgba(255,255,255,.12);font-size:12px}.hero h1{font-size:30px;margin:13px 0 8px}.hero p{margin:0;color:#d6dce5;line-height:1.7}.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}.quick a,.quick button{display:flex;align-items:center;justify-content:center;text-decoration:none;border:0;border-radius:12px;padding:12px 8px;font-weight:750}.primary{background:#fff;color:#111827}.ghost{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.14)!important}.tools{display:grid;grid-template-columns:1fr auto;gap:10px;margin:15px 0}.search{width:100%;border:1px solid #dce1e8;background:#fff;border-radius:13px;padding:13px 14px;font-size:15px;outline:none}.selectedBtn{border:0;border-radius:13px;background:#172033;color:#fff;padding:0 16px;font-weight:750;white-space:nowrap}.cats{display:flex;gap:8px;overflow:auto;padding-bottom:9px}.cat{border:1px solid #dce1e8;background:#fff;color:#4b5565;padding:9px 13px;border-radius:999px;white-space:nowrap}.cat.active{background:#172033;color:#fff;border-color:#172033}.sectionTitle{display:flex;align-items:end;justify-content:space-between;margin:12px 0}.sectionTitle h2{font-size:21px;margin:0}.count{font-size:13px;color:#7a8494}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.card{background:#fff;border:1px solid #e4e8ed;border-radius:17px;overflow:hidden;box-shadow:0 5px 18px rgba(20,30,50,.045)}.pic{height:126px;display:grid;place-items:center;background:linear-gradient(145deg,#fff1eb,#f8d8cd);font-size:48px}.cardBody{padding:13px}.card h3{font-size:16px;margin:0 0 7px}.meta{display:flex;gap:6px;flex-wrap:wrap}.pill{font-size:11px;padding:4px 7px;border-radius:999px;background:#f1f3f6;color:#667085}.price{font-weight:850;font-size:17px;margin:12px 0 9px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.actions button{border:0;border-radius:10px;padding:10px 5px;font-weight:750}.detailBtn{background:#edf0f4;color:#283243}.addBtn{background:#172033;color:#fff}.info{margin:24px 0 105px}.infoGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.infoItem{background:#fff;border:1px solid #e4e8ed;border-radius:15px;padding:14px}.infoItem b{display:block;margin-bottom:6px}.infoItem span{font-size:13px;line-height:1.6;color:#667085}.bottom{position:fixed;left:0;right:0;bottom:0;z-index:25;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-top:1px solid #dfe4ea;padding:10px 14px calc(10px + env(safe-area-inset-bottom))}.bottomIn{width:min(1100px,100%);margin:auto;display:grid;grid-template-columns:1fr 1.35fr;gap:9px}.bottom button{border:0;border-radius:13px;padding:13px;font-weight:800}.shareAll{background:#e9edf2;color:#202938}.consult{background:#172033;color:#fff}.shade{display:none;position:fixed;inset:0;z-index:50;background:rgba(10,15,25,.58);padding:18px;align-items:flex-end;justify-content:center}.shade.show{display:flex}.sheet{width:min(600px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:22px;padding:18px}.sheetTop{display:flex;justify-content:space-between;align-items:center}.sheet h2{margin:0}.close{border:0;background:#edf0f4;border-radius:10px;width:36px;height:36px;font-size:18px}.sheetPic{height:170px;display:grid;place-items:center;background:linear-gradient(145deg,#fff1eb,#f8d8cd);border-radius:16px;font-size:66px;margin:15px 0}.sheet p{color:#667085;line-height:1.75}.sheetBtns{display:grid;grid-template-columns:1fr 1fr;gap:9px}.sheetBtns button{border:0;border-radius:12px;padding:12px;font-weight:800}.list{margin:14px 0}.listItem{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #edf0f3}.remove{border:0;background:#fff1f1;color:#b42318;border-radius:8px;padding:6px 9px}.empty{text-align:center;color:#8490a1;padding:28px 10px}.toast{position:fixed;left:50%;bottom:92px;z-index:80;transform:translate(-50%,15px);opacity:0;pointer-events:none;background:#111827;color:#fff;padding:10px 14px;border-radius:999px;font-size:13px;transition:.2s}.toast.show{opacity:1;transform:translate(-50%,0)}
+    @media(min-width:760px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.pic{height:150px}.infoGrid{grid-template-columns:repeat(4,1fr)}}
+    @media(max-width:420px){.quick{grid-template-columns:1fr}.hero h1{font-size:27px}.grid{gap:9px}.cardBody{padding:11px}.actions{grid-template-columns:1fr}.pic{height:112px}}
+  </style>
+</head>
+<body>
+  <header class="top"><div class="wrap topin"><div class="brand"><div class="logo">🥩</div><div>国内精品肉铺<div class="mini">商品浏览 · 选品咨询</div></div></div><button class="topbtn" onclick="openSelected()">选品 <span id="topCount">0</span></button></div></header>
+
+  <main class="wrap">
+    <section class="hero"><div class="heroBox"><span class="tag">国内精品 · 实时咨询</span><h1>浏览全部商品，选好再咨询</h1><p>查看商品详情、价格、库存及配送说明。将感兴趣的商品加入选品清单后，可整体分享或一键联系官方客服。</p><div class="quick"><button class="primary" onclick="document.getElementById('products').scrollIntoView()">浏览商品</button><a class="ghost" href="https://t.me/TJ_NO1_ice" target="_blank">进入频道</a><a class="ghost" href="https://t.me/TJ_ice_Group" target="_blank">进入群组</a></div></div></section>
+
+    <section id="products"><div class="tools"><input id="search" class="search" placeholder="搜索商品名称或分类" /><button class="selectedBtn" onclick="openSelected()">选品清单</button></div><div id="cats" class="cats"></div><div class="sectionTitle"><h2>全部商品</h2><span id="resultCount" class="count"></span></div><div id="grid" class="grid"></div></section>
+
+    <section class="info"><div class="sectionTitle"><h2>购买说明</h2></div><div class="infoGrid"><div class="infoItem"><b>价格说明</b><span>页面为参考或实时询价，最终价格以客服确认为准。</span></div><div class="infoItem"><b>库存说明</b><span>库存随时变化，下单前请先咨询当日库存与规格。</span></div><div class="infoItem"><b>配送售后</b><span>配送范围、时效及售后标准由客服根据地区说明。</span></div><div class="infoItem"><b>防骗提醒</b><span>仅认准官方客服、频道和群组，不向其他账号付款。</span></div></div></section>
+  </main>
+
+  <div class="bottom"><div class="bottomIn"><button class="shareAll" onclick="shareSelected()">分享选品</button><button class="consult" onclick="consultSelected()">联系 @TJ_ice_CS_bot</button></div></div>
+
+  <div id="detailShade" class="shade" onclick="closeOnShade(event,'detailShade')"><div class="sheet"><div class="sheetTop"><h2 id="detailName"></h2><button class="close" onclick="closeSheet('detailShade')">×</button></div><div id="detailPic" class="sheetPic"></div><div id="detailMeta" class="meta"></div><div id="detailPrice" class="price"></div><p id="detailDesc"></p><div class="sheetBtns"><button class="shareAll" onclick="shareCurrent()">分享商品</button><button class="consult" onclick="addCurrent()">加入选品</button></div></div></div>
+
+  <div id="selectedShade" class="shade" onclick="closeOnShade(event,'selectedShade')"><div class="sheet"><div class="sheetTop"><h2>选品清单</h2><button class="close" onclick="closeSheet('selectedShade')">×</button></div><div id="selectedList" class="list"></div><div class="sheetBtns"><button class="shareAll" onclick="shareSelected()">分享整份选品</button><button class="consult" onclick="consultSelected()">复制并咨询</button></div></div></div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const STORE={bot:'TJ_ice_CS_bot',page:'https://chili888.github.io/Web-app/'};
+    const products=[
+      {id:1,name:'高品质猪肉',cat:'猪肉',icon:'🥩',price:'实时询价',stock:'当日库存',desc:'高品质猪肉占位商品，可替换为具体部位、重量、产地和规格说明。'},
+      {id:2,name:'XX1',cat:'猪肉',icon:'🍖',price:'实时询价',stock:'咨询库存',desc:'XX1 占位模板，可直接修改商品名称、图片、分类、价格与详情。'},
+      {id:3,name:'XX2',cat:'精品',icon:'🥓',price:'咨询报价',stock:'当日库存',desc:'XX2 占位模板，适合展示精品肉类或组合商品。'},
+      {id:4,name:'XX3',cat:'精品',icon:'🍗',price:'咨询报价',stock:'咨询库存',desc:'XX3 占位模板，后续可替换为正式商品资料。'},
+      {id:5,name:'家庭鲜肉组合',cat:'组合',icon:'🧺',price:'套餐询价',stock:'可预订',desc:'家庭组合占位商品，可填写具体搭配、重量和配送范围。'},
+      {id:6,name:'精选排骨',cat:'猪肉',icon:'🍖',price:'实时询价',stock:'当日库存',desc:'精选排骨占位商品，实际价格和规格请联系官方客服。'},
+      {id:7,name:'精品牛肉',cat:'牛肉',icon:'🥩',price:'实时询价',stock:'咨询库存',desc:'精品牛肉占位商品，可补充部位、等级和包装规格。'},
+      {id:8,name:'其他生鲜需求',cat:'其他',icon:'🛒',price:'咨询报价',stock:'联系客服',desc:'没有找到需要的商品，可将具体需求直接发送给客服。'}
+    ];
+    let activeCat='全部',current=null,selected=JSON.parse(localStorage.getItem('meat_selected')||'[]');
+    const $=id=>document.getElementById(id);
+    function initTelegram(){try{if(window.Telegram&&Telegram.WebApp){Telegram.WebApp.ready();Telegram.WebApp.expand();}}catch(e){}}
+    window.addEventListener('load',initTelegram);
+    function save(){localStorage.setItem('meat_selected',JSON.stringify(selected));updateCount()}
+    function updateCount(){$('topCount').textContent=selected.length}
+    function categories(){return ['全部',...new Set(products.map(p=>p.cat))]}
+    function renderCats(){$('cats').innerHTML=categories().map(c=>`<button class="cat ${c===activeCat?'active':''}" onclick="setCat('${c}')">${c}</button>`).join('')}
+    function setCat(c){activeCat=c;renderCats();renderProducts()}
+    function renderProducts(){const q=$('search').value.trim().toLowerCase();const list=products.filter(p=>(activeCat==='全部'||p.cat===activeCat)&&(`${p.name} ${p.cat} ${p.desc}`.toLowerCase().includes(q)));$('resultCount').textContent=`共 ${list.length} 件`;$('grid').innerHTML=list.map(p=>`<article class="card"><div class="pic">${p.icon}</div><div class="cardBody"><h3>${p.name}</h3><div class="meta"><span class="pill">${p.cat}</span><span class="pill">${p.stock}</span></div><div class="price">${p.price}</div><div class="actions"><button class="detailBtn" onclick="showDetail(${p.id})">查看详情</button><button class="addBtn" onclick="toggleSelect(${p.id})">${selected.includes(p.id)?'已选':'加入选品'}</button></div></div></article>`).join('')||'<div class="empty">没有找到相关商品</div>'}
+    function toggleSelect(id){selected=selected.includes(id)?selected.filter(x=>x!==id):[...selected,id];save();renderProducts();toast(selected.includes(id)?'已加入选品':'已移出选品')}
+    function showDetail(id){current=products.find(p=>p.id===id);$('detailName').textContent=current.name;$('detailPic').textContent=current.icon;$('detailMeta').innerHTML=`<span class="pill">${current.cat}</span><span class="pill">${current.stock}</span>`;$('detailPrice').textContent=current.price;$('detailDesc').textContent=current.desc;$('detailShade').classList.add('show')}
+    function addCurrent(){if(!current)return;if(!selected.includes(current.id))selected.push(current.id);save();renderProducts();closeSheet('detailShade');toast('已加入选品')}
+    function shareCurrent(){if(current)shareText(productText(current))}
+    function productText(p){return`【国内精品肉铺】\n商品：${p.name}\n分类：${p.cat}\n价格：${p.price}\n库存：${p.stock}\n${STORE.page}`}
+    function selectedProducts(){return selected.map(id=>products.find(p=>p.id===id)).filter(Boolean)}
+    function selectedText(){const list=selectedProducts();if(!list.length)return'';return`【国内精品肉铺·选品清单】\n${list.map((p,i)=>`${i+1}. ${p.name}｜${p.price}｜${p.stock}`).join('\n')}\n\n官方客服：@${STORE.bot}\n${STORE.page}`}
+    async function shareText(text){if(!text){toast('请先选择商品');return}try{if(navigator.share){await navigator.share({title:'国内精品肉铺',text,url:STORE.page})}else{await navigator.clipboard.writeText(text);window.open(`https://t.me/share/url?url=${encodeURIComponent(STORE.page)}&text=${encodeURIComponent(text)}`,'_blank')}}catch(e){try{await navigator.clipboard.writeText(text);toast('内容已复制')}catch(_){toast('请手动复制')}}}
+    function shareSelected(){shareText(selectedText())}
+    async function consultSelected(){const text=selectedText()||'您好，我想咨询店内商品、价格和库存。';try{await navigator.clipboard.writeText(text);toast('选品信息已复制，正在打开客服')}catch(e){toast('正在打开客服')}setTimeout(()=>window.open(`https://t.me/${STORE.bot}`,'_blank'),350)}
+    function openSelected(){const list=selectedProducts();$('selectedList').innerHTML=list.length?list.map(p=>`<div class="listItem"><div><b>${p.name}</b><div class="mini">${p.price} · ${p.stock}</div></div><button class="remove" onclick="removeSelected(${p.id})">移除</button></div>`).join(''):'<div class="empty">暂未选择商品</div>';$('selectedShade').classList.add('show')}
+    function removeSelected(id){selected=selected.filter(x=>x!==id);save();renderProducts();openSelected()}
+    function closeSheet(id){$(id).classList.remove('show')}
+    function closeOnShade(e,id){if(e.target.id===id)closeSheet(id)}
+    function toast(msg){const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(window.__toast);window.__toast=setTimeout(()=>el.classList.remove('show'),1800)}
+    $('search').addEventListener('input',renderProducts);renderCats();renderProducts();updateCount();
+  </script>
+</body>
+</html>
