@@ -3,14 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes" />
-  <meta name="theme-color" content="#0f172a" />
+  <meta name="theme-color" content="#111827" />
   <title>国内精品肉铺</title>
-  <link rel="stylesheet" href="./assets/style.css?v=20260715-2" />
-  <link rel="stylesheet" href="./assets/image-fit.css?v=20260715-1" />
+  <link rel="stylesheet" href="./assets/style.css?v=20260715-3" />
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="./config.js"></script>
-  <script defer src="./assets/app.js?v=20260715-2"></script>
+  <script defer src="./assets/app.js?v=20260715-3"></script>
 </head>
 <body>
   <header class="top">
@@ -33,54 +32,85 @@
 
     <section class="hero">
       <div class="heroBox">
-        <span id="heroTag" class="tag">国内精品 · 实时咨询</span>
-        <h1 id="heroTitle">浏览全部商品，选好再咨询</h1>
-        <p id="heroText">查看商品详情、价格、库存及配送说明。将感兴趣的商品加入选品清单后，可整体分享或一键联系官方客服。</p>
-        <div class="quick">
-          <button class="primary" type="button" data-action="scroll-products">浏览商品</button>
-          <a id="channelLink" class="ghost" href="https://t.me/TJ_NO1_ice" target="_blank" rel="noopener">进入频道</a>
-          <a id="groupLink" class="ghost" href="https://t.me/TJ_ice_Group" target="_blank" rel="noopener">进入群组</a>
+        <div class="hero-content">
+          <span id="heroTag" class="tag">国内精品 · 实时咨询</span>
+          <h1 id="heroTitle">浏览全部商品，选好再咨询</h1>
+          <p id="heroText">查看商品详情、价格、库存及配送说明。将感兴趣的商品加入选品清单后，可整体分享或一键联系官方客服。</p>
+          <div class="quick">
+            <button class="primary" type="button" data-action="scroll-products">浏览全部商品</button>
+            <a id="channelLink" class="ghost" href="https://t.me/TJ_NO1_ice" target="_blank" rel="noopener">官方频道</a>
+            <a id="groupLink" class="ghost" href="https://t.me/TJ_ice_Group" target="_blank" rel="noopener">官方群组</a>
+          </div>
         </div>
+        <div class="hero-mark" aria-hidden="true">🥩</div>
       </div>
     </section>
 
-    <section id="products">
-      <div class="tools">
-        <input id="search" class="search" type="search" placeholder="搜索商品名称或分类" autocomplete="off" />
-        <button class="selectedBtn" type="button" data-action="open-selected">选品清单</button>
-      </div>
-      <div id="cats" class="cats"></div>
+    <section class="service-strip" aria-label="服务说明">
+      <div><b>高清多图</b><span>商品细节可放大查看</span></div>
+      <div><b>实时咨询</b><span>价格与库存以客服确认为准</span></div>
+      <div><b>官方渠道</b><span>认准客服、频道与群组</span></div>
+    </section>
+
+    <section id="featuredSection" class="featured-section" hidden>
       <div class="sectionTitle">
-        <h2>全部商品</h2>
+        <div><span class="section-kicker">精选推荐</span><h2>本店推荐</h2></div>
+        <span class="section-note">左右滑动查看更多</span>
+      </div>
+      <div id="featuredGrid" class="featured-grid"></div>
+    </section>
+
+    <section id="products" class="products-section">
+      <div class="sectionTitle products-title">
+        <div><span class="section-kicker">全部在售</span><h2>商品列表</h2></div>
         <span id="resultCount" class="count"></span>
       </div>
+
+      <div class="catalog-toolbar">
+        <div class="search-wrap">
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <input id="search" class="search" type="search" placeholder="搜索商品、分类或库存" autocomplete="off" />
+          <button id="clearSearch" class="clear-search" type="button" data-action="clear-search" aria-label="清空搜索" hidden>×</button>
+        </div>
+        <select id="sortMode" class="sort-select" aria-label="商品排序">
+          <option value="recommended">推荐优先</option>
+          <option value="order">默认排序</option>
+          <option value="latest">最新添加</option>
+          <option value="name">名称排序</option>
+        </select>
+        <button class="selectedBtn" type="button" data-action="open-selected">选品清单</button>
+      </div>
+
+      <div id="cats" class="cats"></div>
       <div id="grid" class="grid">
-        <div class="empty">商品加载中…</div>
+        <div class="empty"><b>商品加载中…</b><span>正在获取最新商品资料</span></div>
       </div>
     </section>
 
     <section class="info">
-      <div class="sectionTitle"><h2>购买说明</h2></div>
+      <div class="sectionTitle"><div><span class="section-kicker">下单前请阅读</span><h2>购买说明</h2></div></div>
       <div class="infoGrid">
-        <div class="infoItem"><b>价格说明</b><span id="priceNotice"></span></div>
-        <div class="infoItem"><b>库存说明</b><span id="stockNotice"></span></div>
-        <div class="infoItem"><b>配送售后</b><span id="deliveryNotice"></span></div>
-        <div class="infoItem"><b>防骗提醒</b><span id="fraudNotice"></span></div>
+        <div class="infoItem"><div class="info-icon">¥</div><div><b>价格说明</b><span id="priceNotice"></span></div></div>
+        <div class="infoItem"><div class="info-icon">库</div><div><b>库存说明</b><span id="stockNotice"></span></div></div>
+        <div class="infoItem"><div class="info-icon">配</div><div><b>配送售后</b><span id="deliveryNotice"></span></div></div>
+        <div class="infoItem"><div class="info-icon">盾</div><div><b>防骗提醒</b><span id="fraudNotice"></span></div></div>
       </div>
     </section>
   </main>
 
+  <button id="backTop" class="back-top" type="button" data-action="back-top" aria-label="返回顶部">↑</button>
+
   <div class="bottom">
     <div class="bottomIn">
-      <button class="shareAll" type="button" data-action="share-selected">分享选品</button>
+      <button class="shareAll" type="button" data-action="share-selected"><span id="bottomCount">分享选品</span></button>
       <button id="consultButton" class="consult" type="button" data-action="consult-selected">联系官方客服</button>
     </div>
   </div>
 
   <div id="detailShade" class="shade" data-close-sheet="detailShade">
-    <div class="sheet">
+    <div class="sheet detail-sheet">
       <div class="sheetTop">
-        <h2 id="detailName"></h2>
+        <div><span class="section-kicker">商品详情</span><h2 id="detailName"></h2></div>
         <button class="close" type="button" data-action="close-detail" aria-label="关闭商品详情">×</button>
       </div>
 
@@ -90,9 +120,9 @@
       </button>
       <div id="detailThumbs" class="detail-thumbs" hidden></div>
 
-      <div id="detailMeta" class="meta"></div>
-      <div id="detailPrice" class="price"></div>
-      <p id="detailDesc"></p>
+      <div id="detailMeta" class="meta detail-meta"></div>
+      <div id="detailPrice" class="price detail-price"></div>
+      <p id="detailDesc" class="detail-desc"></p>
       <div class="sheetBtns">
         <button class="shareAll" type="button" data-action="share-current">分享商品</button>
         <button class="consult" type="button" data-action="add-current">加入选品</button>
@@ -103,7 +133,7 @@
   <div id="selectedShade" class="shade" data-close-sheet="selectedShade">
     <div class="sheet">
       <div class="sheetTop">
-        <h2>选品清单</h2>
+        <div><span class="section-kicker">已选择商品</span><h2>选品清单</h2></div>
         <button class="close" type="button" data-action="close-selected" aria-label="关闭选品清单">×</button>
       </div>
       <div id="selectedList" class="list"></div>
@@ -123,9 +153,7 @@
       </div>
     </div>
     <button id="lightboxPrevious" class="lightbox-nav previous" type="button" data-action="previous-image" aria-label="上一张">‹</button>
-    <div class="lightbox-stage">
-      <img id="lightboxImage" alt="商品高清图片" />
-    </div>
+    <div class="lightbox-stage"><img id="lightboxImage" alt="商品高清图片" /></div>
     <button id="lightboxNext" class="lightbox-nav next" type="button" data-action="next-image" aria-label="下一张">›</button>
   </div>
 
