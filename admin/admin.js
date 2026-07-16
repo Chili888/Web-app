@@ -1116,6 +1116,8 @@
     event.preventDefault();
     const form = event.currentTarget;
     const saveButton = $("saveProductButton");
+    const uploadedPaths = [];
+    let productSaved = false;
     const category = categoryFromKey(form.elements.category_id.value);
     if (!category) {
       toast("请选择商品分类");
@@ -1131,7 +1133,9 @@
         if (item.type === "existing") imageUrls.push(item.url);
         else {
           setButtonBusy(saveButton, true, `上传图片 ${index + 1}/${state.imageItems.length}…`);
-          imageUrls.push(await uploadProductImage(item.file));
+          const uploaded = await uploadProductImage(item.file);
+          uploadedPaths.push(uploaded.path);
+          imageUrls.push(uploaded.publicUrl);
         }
       }
 
@@ -1174,12 +1178,15 @@
         : state.supabase.from("products").insert(payload);
       const {error} = await query;
       if (error) throw error;
+      productSaved = true;
 
       toast(id ? "商品已更新" : "商品已添加");
       closeProductModal();
       await loadProducts();
     } catch (error) {
-      toast(humanError(error));
+      const cleanupSucceeded = productSaved || await cleanupUploadedProductImages(uploadedPaths);
+      const cleanupWarning = cleanupSucceeded ? "" : "；临时图片清理失败，请联系管理员";
+      toast(`${humanError(error)}${cleanupWarning}`);
     } finally {
       setButtonBusy(saveButton, false, "保存商品");
     }
@@ -1193,7 +1200,17 @@
     const {error} = await state.supabase.storage.from("product-images").upload(path, file, {cacheControl: "3600", upsert: false, contentType: file.type || undefined});
     if (error) throw error;
     const {data} = state.supabase.storage.from("product-images").getPublicUrl(path);
-    return data.publicUrl;
+    return {path, publicUrl: data.publicUrl};
+  }
+
+  async function cleanupUploadedProductImages(paths) {
+    if (!paths.length) return true;
+    try {
+      const {error} = await state.supabase.storage.from("product-images").remove(paths);
+      return !error;
+    } catch {
+      return false;
+    }
   }
 
   async function deleteProduct() {

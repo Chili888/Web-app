@@ -23,6 +23,33 @@ describe("PostgreSQL queue and routing", {skip: !databaseUrl}, () => {
     await store.close();
   });
 
+  it("redacts terminal update payloads while retaining safe retry metadata", async () => {
+    const store = new PostgresSupportStore(databaseUrl as string);
+    const updateId = uniqueNumber(19);
+    await store.persistUpdate(customerUpdate(updateId, uniqueNumber(20), {text: "sensitive integration message"}));
+    const claimed = await store.claimNextUpdate("integration-dead-letter", new Date());
+    assert.equal(claimed?.updateId, updateId);
+    await store.retryUpdate(updateId, "integration terminal error", new Date(), true);
+    await store.close();
+
+    const pool = new Pool({connectionString: databaseUrl as string});
+    const result = await pool.query<{
+      status: string;
+      payload: Record<string, unknown>;
+      payload_redacted_at: Date | null;
+      last_error: string | null;
+    }>(
+      `select status, payload, payload_redacted_at, last_error
+       from support.telegram_updates where update_id = $1`,
+      [updateId]
+    );
+    await pool.end();
+    assert.equal(result.rows[0]?.status, "dead_letter");
+    assert.deepEqual(result.rows[0]?.payload, {update_id: updateId, update_type: "message"});
+    assert.ok(result.rows[0]?.payload_redacted_at instanceof Date);
+    assert.equal(result.rows[0]?.last_error, "integration terminal error");
+  });
+
   it("persists an administrator route across store instances", async () => {
     const firstStore = new PostgresSupportStore(databaseUrl as string);
     const updateId = uniqueNumber(3);

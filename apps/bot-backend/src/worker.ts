@@ -21,6 +21,8 @@ const outbox = new OutboxExecutor(store, logger, {
 const service = new SupportService(config, store, telegram, outbox, logger, {workerId});
 let running = true;
 let lastHeartbeat = 0;
+let failureDelayMs = Math.max(config.workerPollIntervalMs, 1_000);
+const maximumFailureDelayMs = 15_000;
 
 const shutdown = (signal: string): void => {
   running = false;
@@ -31,21 +33,24 @@ process.once("SIGTERM", () => shutdown("SIGTERM"));
 
 logger.info({workerId}, "Telegram operations worker started");
 while (running) {
-  const now = Date.now();
-  if (now - lastHeartbeat >= 15_000) {
-    await store.heartbeat(workerId, "telegram", new Date(now));
-    lastHeartbeat = now;
-  }
-  const processed = await service.processNext();
-  let maintained = false;
-  if (!processed) {
-    try {
-      maintained = await service.processMaintenance();
-    } catch (error) {
-      logger.error({error: safeErrorMessage(error)}, "Telegram maintenance task failed");
+  try {
+    const now = Date.now();
+    if (now - lastHeartbeat >= 15_000) {
+      await store.heartbeat(workerId, "telegram", new Date(now));
+      lastHeartbeat = now;
     }
+    const processed = await service.processNext();
+    let maintained = false;
+    if (!processed) {
+      maintained = await service.processMaintenance();
+    }
+    failureDelayMs = Math.max(config.workerPollIntervalMs, 1_000);
+    if (!processed && !maintained) await sleep(config.workerPollIntervalMs);
+  } catch (error) {
+    logger.error({error: safeErrorMessage(error), retryDelayMs: failureDelayMs}, "Telegram worker iteration failed");
+    if (running) await sleep(failureDelayMs);
+    failureDelayMs = Math.min(failureDelayMs * 2, maximumFailureDelayMs);
   }
-  if (!processed && !maintained) await sleep(config.workerPollIntervalMs);
 }
 await store.close();
 logger.info({workerId}, "Telegram operations worker stopped");

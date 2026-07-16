@@ -267,7 +267,7 @@
       }
       channel.subscribe();
     } catch (error) {
-      console.warn("Realtime subscription skipped:", error);
+      console.warn("Realtime subscription skipped", {code: String(error?.code || "unknown").slice(0, 40)});
     }
   }
 

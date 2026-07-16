@@ -24,6 +24,29 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   const allowedOrigins = new Set(options.config.storefrontOrigins);
   allowedOrigins.add(new URL(options.config.appBaseUrl).origin);
 
+  app.setErrorHandler((error, request, reply) => {
+    const errorDetails = error && typeof error === "object"
+      ? error as {statusCode?: unknown; code?: unknown}
+      : {};
+    const candidateStatus = Number(errorDetails.statusCode);
+    const statusCode = Number.isSafeInteger(candidateStatus) && candidateStatus >= 400 && candidateStatus < 500
+      ? candidateStatus
+      : 500;
+    const errorCode = typeof errorDetails.code === "string" ? errorDetails.code.slice(0, 80) : "unhandled_error";
+    options.logger.error({
+      method: request.method,
+      route: request.routeOptions.url ?? request.url.split("?", 1)[0],
+      statusCode,
+      errorCode
+    }, "HTTP request failed");
+    const responseError = statusCode === 413
+      ? "request_too_large"
+      : statusCode === 500
+        ? "internal_error"
+        : "request_failed";
+    return reply.code(statusCode).send({error: responseError});
+  });
+
   app.addHook("onRequest", async (request, reply) => {
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("Referrer-Policy", "no-referrer");

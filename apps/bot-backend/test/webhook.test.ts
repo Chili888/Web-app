@@ -102,4 +102,24 @@ describe("Telegram webhook", () => {
     assert.deepEqual(duplicate.json(), {accepted: true, duplicate: true});
     assert.equal(store.updates.size, 1);
   });
+
+  it("does not expose unexpected persistence errors to webhook callers", async () => {
+    const config = testConfig();
+    const store = new InMemorySupportStore();
+    store.persistUpdate = async () => {
+      throw Object.assign(new Error("sensitive database detail"), {code: "XX000"});
+    };
+    app = buildApp({config, store, logger: silentLogger});
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/telegram/webhook",
+      headers: {"x-telegram-bot-api-secret-token": config.telegramWebhookSecret},
+      payload: customerUpdate(11, 21)
+    });
+
+    assert.equal(response.statusCode, 500);
+    assert.deepEqual(response.json(), {error: "internal_error"});
+    assert.doesNotMatch(response.body, /sensitive database detail/u);
+  });
 });

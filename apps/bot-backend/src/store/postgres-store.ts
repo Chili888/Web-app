@@ -349,7 +349,11 @@ export class PostgresSupportStore implements SupportStore {
       `update support.telegram_updates
        set status = $2, next_attempt_at = $3::timestamptz, last_error = $4,
            locked_at = null, locked_by = null,
-           processed_at = case when $2 = 'dead_letter' then now() else processed_at end
+           processed_at = case when $2 = 'dead_letter' then now() else processed_at end,
+           payload = case when $2 = 'dead_letter'
+             then jsonb_build_object('update_id', update_id, 'update_type', update_type)
+             else payload end,
+           payload_redacted_at = case when $2 = 'dead_letter' then now() else payload_redacted_at end
        where update_id = $1`,
       [updateId, deadLetter ? "dead_letter" : "retry", nextAttemptAt, error.slice(0, 500)]
     );

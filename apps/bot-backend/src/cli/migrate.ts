@@ -3,6 +3,7 @@ import {readdir, readFile} from "node:fs/promises";
 import {resolve} from "node:path";
 import {Pool} from "pg";
 import {databasePoolConfig} from "../database.js";
+import {withoutOuterTransaction} from "./migration-sql.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required");
@@ -43,7 +44,7 @@ try {
     const client = await pool.connect();
     try {
       await client.query("begin");
-      await client.query(sql);
+      await client.query(withoutOuterTransaction(sql));
       await client.query(
         "insert into support.schema_migrations (name, checksum) values ($1, $2)",
         [name, checksum]
