@@ -37,6 +37,13 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     }
   });
 
+  app.get("/", async (_request, reply) => reply.send({
+    service: "TJ Telegram Center",
+    status: "running",
+    health: "/health",
+    storefront: "https://chili888.github.io/Web-app/"
+  }));
+
   app.get("/health", async (_request, reply) => {
     try {
       const health = await options.store.getServiceHealth(new Date());
