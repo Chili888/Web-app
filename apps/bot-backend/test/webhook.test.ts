@@ -39,8 +39,11 @@ describe("Telegram webhook", () => {
       service: "TJ Telegram Center",
       status: "running",
       health: "/health",
-      storefront: "https://chili888.github.io/Web-app/"
+      storefront: config.appBaseUrl
     });
+    assert.equal(response.headers["cache-control"], "no-store");
+    assert.equal(response.headers["x-content-type-options"], "nosniff");
+    assert.equal(response.headers["x-frame-options"], "DENY");
   });
 
   it("rejects missing or invalid webhook secrets", async () => {

@@ -5,12 +5,18 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes" />
   <meta name="theme-color" content="#111827" />
   <title>国内精品肉铺</title>
-  <link rel="stylesheet" href="./assets/style.css?v=20260716-7" />
+  <script>
+    (() => {
+      const dark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+    })();
+  </script>
+  <link rel="stylesheet" href="./assets/style.css?v=20260716-8" />
   <link rel="stylesheet" href="./assets/media-fix.css?v=20260715-2" />
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="./config.js"></script>
-  <script defer src="./assets/app.js?v=20260716-8"></script>
+  <script defer src="./assets/app.js?v=20260716-9"></script>
 </head>
 <body>
   <header class="top">

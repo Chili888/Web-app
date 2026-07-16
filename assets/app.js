@@ -88,9 +88,12 @@
         webApp.BackButton?.onClick(handleTelegramBack);
         webApp.ready();
         webApp.expand();
+      } else {
+        watchSystemTheme();
       }
     } catch (error) {
-      console.warn("Telegram WebApp initialization failed:", error);
+      watchSystemTheme();
+      console.warn("Telegram WebApp initialization failed", {name: String(error?.name || "unknown").slice(0, 40)});
     }
   }
 
@@ -794,7 +797,9 @@
   }
 
   function applyTelegramTheme(webApp) {
-    document.documentElement.dataset.theme = webApp?.colorScheme === "dark" ? "dark" : "light";
+    const root = document.documentElement;
+    const dark = webApp?.colorScheme === "dark";
+    root.dataset.theme = dark ? "dark" : "light";
     const colors = {
       "--bg": webApp?.themeParams?.bg_color,
       "--surface": webApp?.themeParams?.secondary_bg_color,
@@ -802,8 +807,33 @@
       "--muted": webApp?.themeParams?.hint_color
     };
     Object.entries(colors).forEach(([property, value]) => {
-      if (/^#[0-9a-f]{6}$/iu.test(String(value || ""))) document.documentElement.style.setProperty(property, value);
+      root.style.removeProperty(property);
+      if (/^#[0-9a-f]{6}$/iu.test(String(value || ""))) root.style.setProperty(property, value);
     });
+    updateThemeChrome(dark);
+    try {
+      webApp.setHeaderColor?.(dark ? "#1d2532" : "#ffffff");
+      webApp.setBackgroundColor?.(dark ? "#111722" : "#f3f5f7");
+      webApp.setBottomBarColor?.(dark ? "#1d2532" : "#ffffff");
+    } catch {
+      // Older Telegram clients do not support every color API.
+    }
+  }
+
+  function watchSystemTheme() {
+    const media = window.matchMedia?.("(prefers-color-scheme: dark)");
+    const apply = () => {
+      const dark = Boolean(media?.matches);
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+      updateThemeChrome(dark);
+    };
+    apply();
+    media?.addEventListener?.("change", apply);
+  }
+
+  function updateThemeChrome(dark) {
+    const color = dark ? "#111722" : "#f3f5f7";
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", color);
   }
 
   function updateNetworkState() {

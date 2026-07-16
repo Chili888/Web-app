@@ -23,6 +23,10 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   const adminRateLimits = new Map<number, {windowStartedAt: number; count: number}>();
 
   app.addHook("onRequest", async (request, reply) => {
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("Referrer-Policy", "no-referrer");
+    reply.header("X-Frame-Options", "DENY");
+    reply.header("Cache-Control", "no-store");
     const origin = request.headers.origin;
     const allowed = typeof origin === "string" && options.config.storefrontOrigins.has(origin);
     if (allowed) {
@@ -41,7 +45,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     service: "TJ Telegram Center",
     status: "running",
     health: "/health",
-    storefront: "https://chili888.github.io/Web-app/"
+    storefront: options.config.appBaseUrl
   }));
 
   app.get("/health", async (_request, reply) => {
