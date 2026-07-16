@@ -37,6 +37,7 @@
     categoriesReady: false,
     products: [],
     selected: readSelected(),
+    quantities: readQuantities(),
     activeCategory: "all",
     sortMode: "recommended",
     current: null,
@@ -54,6 +55,7 @@
   async function init() {
     initTelegram();
     bindEvents();
+    updateNetworkState();
     applySettings();
     updateCount();
 
@@ -71,7 +73,7 @@
       $("modeNotice").hidden = true;
       subscribeChanges();
     } catch (error) {
-      console.error(error);
+      console.warn("Store data load failed", {code: String(error?.code || "unknown").slice(0, 40)});
       useDemo("数据库暂时无法连接，当前显示演示商品。");
     }
   }
@@ -79,8 +81,12 @@
   function initTelegram() {
     try {
       if (window.Telegram?.WebApp) {
-        window.Telegram.WebApp.ready();
-        window.Telegram.WebApp.expand();
+        const webApp = window.Telegram.WebApp;
+        applyTelegramTheme(webApp);
+        webApp.onEvent?.("themeChanged", () => applyTelegramTheme(webApp));
+        webApp.BackButton?.onClick(handleTelegramBack);
+        webApp.ready();
+        webApp.expand();
       }
     } catch (error) {
       console.warn("Telegram WebApp initialization failed:", error);
@@ -97,7 +103,6 @@
       state.sortMode = event.currentTarget.value;
       renderProducts();
     });
-
     document.addEventListener("click", (event) => {
       const actionElement = event.target.closest("[data-action]");
       if (actionElement) {
@@ -117,13 +122,16 @@
           "show-detail": () => showDetail(id),
           "toggle-select": () => toggleSelect(id),
           "remove-selected": () => removeSelected(id),
+          "decrease-quantity": () => changeQuantity(id, -1),
+          "increase-quantity": () => changeQuantity(id, 1),
           "set-detail-image": () => setDetailImage(index),
           "open-lightbox": () => openLightbox(state.detailImageIndex),
           "close-lightbox": closeLightbox,
           "previous-image": () => moveLightbox(-1),
           "next-image": () => moveLightbox(1),
           "clear-search": clearSearch,
-          "back-top": () => window.scrollTo({top: 0, behavior: "smooth"})
+          "back-top": () => window.scrollTo({top: 0, behavior: "smooth"}),
+          "retry-data": retryData
         };
         handlers[action]?.();
       }
@@ -142,7 +150,10 @@
 
     document.addEventListener("error", (event) => {
       const image = event.target.closest?.("img[data-product-image]");
-      if (!image) return;
+      if (!image) {
+        if (event.target === $("lightboxImage")) toast("图片加载失败，请尝试打开原图");
+        return;
+      }
       image.hidden = true;
       image.parentElement?.querySelector(".image-fallback")?.removeAttribute("hidden");
     }, true);
@@ -163,6 +174,8 @@
     window.addEventListener("scroll", () => {
       $("backTop").classList.toggle("show", window.scrollY > 650);
     }, {passive: true});
+    window.addEventListener("online", updateNetworkState);
+    window.addEventListener("offline", updateNetworkState);
   }
 
   async function loadSettings() {
@@ -415,8 +428,8 @@
       }
     }
 
-    urls = urls.map((url) => String(url || "").trim()).filter(Boolean);
-    const legacy = String(product?.image_url || "").trim();
+    urls = urls.map(safeImageUrl).filter(Boolean);
+    const legacy = safeImageUrl(product?.image_url);
     if (legacy) {
       urls = urls.filter((url) => url !== legacy);
       urls.unshift(legacy);
@@ -436,9 +449,13 @@
   }
 
   function toggleSelect(id) {
-    state.selected = state.selected.includes(id)
-      ? state.selected.filter((value) => value !== id)
-      : [...state.selected, id];
+    if (state.selected.includes(id)) {
+      state.selected = state.selected.filter((value) => value !== id);
+      delete state.quantities[id];
+    } else {
+      state.selected = [...state.selected, id];
+      state.quantities[id] = 1;
+    }
     saveSelected();
     renderFeatured();
     renderProducts();
@@ -462,6 +479,7 @@
     $("detailPrice").textContent = product.price_text || "实时询价";
     $("detailDesc").textContent = product.description || "暂无详细介绍";
     $("detailShade").classList.add("show");
+    syncTelegramBackButton();
   }
 
   function renderDetailGallery() {
@@ -511,6 +529,7 @@
     renderLightbox();
     $("imageLightbox").hidden = false;
     document.body.classList.add("lightbox-open");
+    syncTelegramBackButton();
   }
 
   function renderLightbox() {
@@ -537,12 +556,14 @@
     $("imageLightbox").hidden = true;
     $("lightboxImage").removeAttribute("src");
     document.body.classList.remove("lightbox-open");
+    syncTelegramBackButton();
   }
 
   function addCurrent() {
     if (!state.current) return;
     const id = Number(state.current.id);
     if (!state.selected.includes(id)) state.selected.push(id);
+    if (!state.quantities[id]) state.quantities[id] = 1;
     saveSelected();
     renderFeatured();
     renderProducts();
@@ -577,7 +598,7 @@
     if (!list.length) return "";
     return [
       `【${state.settings.shop_name}·选品清单】`,
-      ...list.map((product, index) => `${index + 1}. ${product.name}｜${product.price_text || "实时询价"}｜${product.stock_text || "咨询库存"}`),
+      ...list.map((product, index) => `${index + 1}. ${product.name} × ${quantityFor(product.id)}｜${product.price_text || "实时询价"}｜${product.stock_text || "咨询库存"}`),
       "",
       `官方客服：@${normalizeUsername(state.settings.bot_username)}`,
       pageUrl()
@@ -640,20 +661,44 @@
               <div class="selected-main">
                 <b>${escapeHtml(product.name)}</b>
                 <div class="mini">${escapeHtml(product.price_text || "实时询价")} · ${escapeHtml(product.stock_text || "咨询库存")}</div>
+                <div class="quantity-control">
+                  <button type="button" data-action="decrease-quantity" data-id="${Number(product.id)}" aria-label="减少数量">−</button>
+                  <span>${quantityFor(product.id)}</span>
+                  <button type="button" data-action="increase-quantity" data-id="${Number(product.id)}" aria-label="增加数量">＋</button>
+                </div>
               </div>
               <button class="remove" type="button" data-action="remove-selected" data-id="${Number(product.id)}">移除</button>
             </div>`;
         }).join("")
       : '<div class="empty"><b>暂未选择商品</b><span>从商品列表中加入感兴趣的商品</span></div>';
     $("selectedShade").classList.add("show");
+    syncTelegramBackButton();
   }
 
   function removeSelected(id) {
     state.selected = state.selected.filter((value) => value !== id);
+    delete state.quantities[id];
     saveSelected();
     renderFeatured();
     renderProducts();
     openSelected();
+  }
+
+  function changeQuantity(id, delta) {
+    if (!state.selected.includes(id)) return;
+    const product = state.products.find((item) => Number(item.id) === id);
+    const max = product?.unlimited_inventory || product?.inventory_count == null
+      ? 99
+      : Math.max(1, Math.min(99, Number(product.inventory_count)));
+    const next = Math.max(1, Math.min(max, quantityFor(id) + delta));
+    state.quantities[id] = next;
+    saveSelected();
+    openSelected();
+  }
+
+  function quantityFor(id) {
+    const quantity = Number(state.quantities[Number(id)] || 1);
+    return Number.isSafeInteger(quantity) && quantity >= 1 && quantity <= 99 ? quantity : 1;
   }
 
   function clearSearch() {
@@ -676,8 +721,18 @@
     }
   }
 
+  function readQuantities() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem("meat_quantities") || "{}");
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
   function saveSelected() {
     localStorage.setItem("meat_selected", JSON.stringify(state.selected));
+    localStorage.setItem("meat_quantities", JSON.stringify(state.quantities));
     updateCount();
   }
 
@@ -688,6 +743,65 @@
 
   function closeSheet(id) {
     $(id).classList.remove("show");
+    syncTelegramBackButton();
+  }
+
+  function handleTelegramBack() {
+    if (!$("imageLightbox").hidden) {
+      closeLightbox();
+      return;
+    }
+    if ($("detailShade").classList.contains("show")) {
+      closeSheet("detailShade");
+      return;
+    }
+    if ($("selectedShade").classList.contains("show")) closeSheet("selectedShade");
+  }
+
+  function syncTelegramBackButton() {
+    const backButton = window.Telegram?.WebApp?.BackButton;
+    if (!backButton) return;
+    const visible = !$("imageLightbox").hidden
+      || $("detailShade").classList.contains("show")
+      || $("selectedShade").classList.contains("show");
+    if (visible) backButton.show();
+    else backButton.hide();
+  }
+
+  function applyTelegramTheme(webApp) {
+    document.documentElement.dataset.theme = webApp?.colorScheme === "dark" ? "dark" : "light";
+    const colors = {
+      "--bg": webApp?.themeParams?.bg_color,
+      "--surface": webApp?.themeParams?.secondary_bg_color,
+      "--text": webApp?.themeParams?.text_color,
+      "--muted": webApp?.themeParams?.hint_color
+    };
+    Object.entries(colors).forEach(([property, value]) => {
+      if (/^#[0-9a-f]{6}$/iu.test(String(value || ""))) document.documentElement.style.setProperty(property, value);
+    });
+  }
+
+  function updateNetworkState() {
+    $("networkNotice").hidden = navigator.onLine;
+  }
+
+  async function retryData() {
+    if (!navigator.onLine) {
+      toast("网络仍未连接，请稍后重试");
+      return;
+    }
+    if (!state.supabase) {
+      window.location.reload();
+      return;
+    }
+    try {
+      await Promise.all([loadSettings(), loadCategories(), loadProducts()]);
+      $("networkNotice").hidden = true;
+      toast("商品数据已更新");
+    } catch (error) {
+      console.warn("Store data retry failed", {code: String(error?.code || "unknown").slice(0, 40)});
+      toast("加载失败，请检查网络后重试");
+    }
   }
 
   async function copyText(text) {
@@ -710,6 +824,17 @@
   function telegramLink(username) {
     const clean = normalizeUsername(username);
     return clean ? `https://t.me/${clean}` : "#";
+  }
+
+  function safeImageUrl(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    try {
+      const url = new URL(raw, window.location.href);
+      return url.protocol === "https:" || url.protocol === "http:" ? url.href : "";
+    } catch {
+      return "";
+    }
   }
 
   function pageUrl() {

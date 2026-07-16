@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes" />
   <meta name="theme-color" content="#0f172a" />
   <title>肉铺管理后台</title>
-  <link rel="stylesheet" href="./admin.css?v=20260715-4" />
+  <link rel="stylesheet" href="./admin.css?v=20260716-7" />
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="../config.js"></script>
-  <script defer src="./admin.js?v=20260715-4"></script>
+  <script defer src="./admin.js?v=20260716-7"></script>
 </head>
 <body>
   <div id="setupRequired" class="setup" hidden>
@@ -50,6 +50,9 @@
       <aside class="sidebar">
         <button class="nav active" type="button" data-tab="products"><span>▦</span>商品管理</button>
         <button class="nav" type="button" data-tab="categories"><span>⌗</span>分类管理</button>
+        <button class="nav" type="button" data-tab="bot"><span>机</span>机器人设置</button>
+        <button class="nav" type="button" data-tab="channel"><span>播</span>频道运营</button>
+        <button class="nav" type="button" data-tab="moderation"><span>盾</span>群组治理</button>
         <button class="nav" type="button" data-tab="settings"><span>⚙</span>店铺设置</button>
         <button class="nav" type="button" data-tab="data"><span>⇅</span>数据工具</button>
       </aside>
@@ -63,6 +66,7 @@
 
           <div id="multiImageUpgradeNotice" class="upgrade-notice" hidden>多图功能尚未启用，请运行 <code>supabase-multi-images.sql</code>。</div>
           <div id="categoryUpgradeNotice" class="upgrade-notice" hidden>分类管理尚未启用，请在 Supabase SQL Editor 运行 <code>supabase-categories.sql</code>。</div>
+          <div id="commerceUpgradeNotice" class="upgrade-notice" hidden>价格、库存和软删除扩展尚未启用。审核后执行 <code>202607150003_commerce_foundation.sql</code>；现有商品管理仍可正常使用。</div>
 
           <div class="stats stats-five">
             <div><span>全部商品</span><b id="statTotal">0</b></div>
@@ -74,7 +78,7 @@
 
           <div class="toolbar toolbar-rich">
             <input id="productSearch" type="search" placeholder="搜索商品名称、分类、价格或库存" />
-            <select id="statusFilter"><option value="all">全部状态</option><option value="active">已上架</option><option value="inactive">已下架</option><option value="featured">推荐商品</option><option value="no-image">缺少图片</option></select>
+            <select id="statusFilter"><option value="all">全部状态</option><option value="active">已上架</option><option value="inactive">已下架</option><option value="featured">推荐商品</option><option value="no-image">缺少图片</option><option value="deleted">已软删除</option></select>
             <select id="categoryFilter"><option value="all">全部分类</option></select>
             <select id="adminSort"><option value="order">显示顺序</option><option value="latest">最新添加</option><option value="name">名称排序</option><option value="updated">最近更新</option></select>
             <button id="refreshProducts" class="secondary" type="button">刷新</button>
@@ -115,6 +119,46 @@
           <div id="categoryList" class="category-list"><div class="empty">正在加载分类…</div></div>
         </div>
 
+        <div id="botTab" class="tab-panel" hidden>
+          <div class="panel-head"><div><span class="eyebrow">Telegram 客服</span><h2>机器人设置</h2><p>文案和菜单保存后由 Worker 动态读取，无需重新构建镜像。</p></div><button id="refreshBotSettings" class="secondary" type="button">刷新设置</button></div>
+          <div id="botSettingsApiNotice" class="upgrade-notice" hidden>机器人设置后端尚未就绪，请检查 API 和 migration。</div>
+          <form id="botSettingsForm" class="form-card">
+            <input name="version" type="hidden" value="1" />
+            <div class="form-section-title">欢迎首页与菜单内容</div>
+            <div class="form-grid">
+              <label class="full">欢迎语<textarea name="welcome_message" rows="7" maxlength="4096" required></textarea><small>使用 <code>{客户名称}</code> 插入客户 first_name。</small></label>
+              <label class="full">帮助信息<textarea name="help_message" rows="3" maxlength="4096" required></textarea></label>
+              <label class="full">为什么选择我们<textarea name="why_us_message" rows="7" maxlength="4096" required></textarea></label>
+              <label class="full">现货咨询<textarea name="stock_message" rows="7" maxlength="4096" required></textarea></label>
+              <label class="full">交易必看<textarea name="trade_rules_message" rows="7" maxlength="4096" required></textarea></label>
+              <label class="full">联系客服提示<textarea name="contact_message" rows="3" maxlength="4096" required></textarea></label>
+              <label>营业时间<textarea name="business_hours" rows="3" maxlength="1000"></textarea></label>
+              <label>离线提示<textarea name="offline_message" rows="3" maxlength="2000"></textarea></label>
+              <label>Mini App 地址<input name="mini_app_url" type="url" required /></label>
+              <label>主频道地址<input name="channel_url" type="url" required /></label>
+              <label>讨论群地址<input name="group_url" type="url" required /></label>
+              <label class="check"><input name="automatic_reply_enabled" type="checkbox" /> 启用关键词自动回复</label>
+            </div>
+            <div class="form-section-title">Inline 菜单按钮</div>
+            <div id="botMenuButtons" class="bot-menu-buttons"></div>
+            <div class="data-note">按钮按数字顺序排列，每行自动放置两个。商城和频道按钮使用 Web App/URL，不产生客户咨询消息。</div>
+            <div class="form-actions"><button id="saveBotSettings" class="primary" type="submit">保存机器人设置</button></div>
+          </form>
+          <section class="form-card auto-reply-panel">
+            <div class="form-section-title">关键词自动回复</div>
+            <form id="autoReplyForm" class="auto-reply-form">
+              <input name="id" type="hidden" /><input name="version" type="hidden" value="1" />
+              <select name="match_type"><option value="contains">包含</option><option value="exact">完全匹配</option><option value="prefix">开头匹配</option><option value="regex">正则表达式</option></select>
+              <input name="keyword" maxlength="200" required placeholder="关键词" />
+              <textarea name="response_content" rows="2" maxlength="4096" required placeholder="自动回复内容"></textarea>
+              <input name="priority" type="number" min="0" max="10000" value="100" aria-label="优先级" />
+              <label class="check"><input name="enabled" type="checkbox" checked /> 启用</label>
+              <button class="primary" type="submit">保存规则</button>
+            </form>
+            <div id="autoReplyList" class="moderation-rule-list"><div class="empty">尚未加载自动回复</div></div>
+          </section>
+        </div>
+
         <div id="settingsTab" class="tab-panel" hidden>
           <div class="panel-head"><div><span class="eyebrow">店铺资料</span><h2>店铺设置</h2><p>修改后前台会自动读取最新内容。</p></div></div>
           <form id="settingsForm" class="form-card">
@@ -143,6 +187,77 @@
           </form>
         </div>
 
+        <div id="channelTab" class="tab-panel" hidden>
+          <div class="panel-head">
+            <div><span class="eyebrow">Telegram 频道</span><h2>频道运营</h2><p>创建文字草稿、即时或定时发布，并管理已发布消息。</p></div>
+            <button id="refreshChannelPosts" class="secondary" type="button">刷新记录</button>
+          </div>
+          <div id="channelApiNotice" class="upgrade-notice" hidden>请先配置公开的 <code>apiBaseUrl</code> 并启动后端 API。</div>
+          <form id="channelPostForm" class="form-card channel-composer">
+            <div class="form-section-title">新建频道内容</div>
+            <div class="form-grid">
+              <label class="full">正文<textarea name="text" rows="7" maxlength="4096" required placeholder="输入频道公告或商品内容"></textarea></label>
+              <label>格式<select name="parse_mode"><option value="">纯文本</option><option value="HTML">HTML</option><option value="MarkdownV2">MarkdownV2</option></select></label>
+              <label>定时发布时间<input name="scheduled_at" type="datetime-local" /></label>
+              <label class="check full"><input name="pin" type="checkbox" /> 发布完成后置顶</label>
+            </div>
+            <div class="form-actions channel-actions">
+              <button class="secondary" type="button" data-channel-submit="draft">保存草稿</button>
+              <button class="secondary" type="button" data-channel-submit="schedule">定时发布</button>
+              <button class="primary" type="button" data-channel-submit="now">立即发布</button>
+            </div>
+          </form>
+          <div class="channel-history-head"><h3>发布记录</h3><span>操作会进入数据库队列，由 Worker 异步执行。</span></div>
+          <div id="channelPostList" class="channel-post-list"><div class="empty">尚未加载频道记录</div></div>
+        </div>
+
+        <div id="moderationTab" class="tab-panel" hidden>
+          <div class="panel-head">
+            <div><span class="eyebrow">Telegram 讨论群</span><h2>群组治理</h2><p>配置温和的逐级处罚策略；管理员、白名单和频道自动转发会自动跳过。</p></div>
+          </div>
+          <div id="moderationApiNotice" class="upgrade-notice" hidden>群治理后端尚未就绪，请检查 API、migration 和 Worker。</div>
+          <form id="moderationSettingsForm" class="form-card">
+            <input name="version" type="hidden" value="1" />
+            <div class="form-section-title">处罚策略</div>
+            <div class="form-grid">
+              <label class="check full"><input name="enabled" type="checkbox" checked /> 启用讨论群自动治理</label>
+              <label>违规统计窗口（秒）<input name="violation_window_seconds" type="number" min="60" max="2592000" step="60" required /></label>
+              <label>第几次开始禁言<input name="mute_after_violations" type="number" min="1" max="100" required /></label>
+              <label>第几次开始封禁<input name="ban_after_violations" type="number" min="1" max="100" required /></label>
+              <label>禁言时长（秒）<input name="mute_duration_seconds" type="number" min="30" max="2592000" required /></label>
+              <label class="full">首次警告文案<textarea name="warning_message" rows="3" maxlength="500"></textarea></label>
+            </div>
+            <div class="data-note"><b>执行顺序：</b>首次违规删除并警告；达到禁言阈值后临时禁言；达到封禁阈值后封禁。规则设为“仅记录”时不会处罚。</div>
+            <div class="form-actions"><button id="saveModerationSettings" class="primary" type="submit">保存治理设置</button></div>
+          </form>
+          <section class="form-card moderation-rule-panel">
+            <div class="form-section-title">关键词与链接规则</div>
+            <form id="moderationRuleForm" class="moderation-rule-form">
+              <input name="id" type="hidden" />
+              <input name="version" type="hidden" value="1" />
+              <select name="rule_type"><option value="keyword">关键词</option><option value="link">任意链接</option></select>
+              <input name="pattern" maxlength="200" placeholder="输入敏感词；链接规则可留空" />
+              <select name="mode"><option value="delete">逐级处罚</option><option value="log">仅记录</option><option value="mute">直接禁言</option><option value="ban">直接封禁</option></select>
+              <input name="action_duration_seconds" type="number" min="30" max="2592000" placeholder="禁言秒数" />
+              <input name="priority" type="number" min="0" max="10000" value="100" aria-label="优先级" />
+              <label class="check"><input name="enabled" type="checkbox" checked /> 启用</label>
+              <button class="primary" type="submit">保存规则</button>
+            </form>
+            <div id="moderationRuleList" class="moderation-rule-list"><div class="empty">尚未加载规则</div></div>
+          </section>
+          <form id="groupMemberActionForm" class="form-card group-member-form">
+            <div class="form-section-title">人工成员操作</div>
+            <div class="form-grid">
+              <label>Telegram 用户 ID<input name="user_id" type="number" min="1" step="1" inputmode="numeric" required /></label>
+              <label>操作<select name="action"><option value="mute">临时禁言</option><option value="unmute">解除限制</option><option value="kick">移出但允许重进</option><option value="ban">封禁</option><option value="unban">解除封禁</option></select></label>
+              <label>禁言时长（秒）<input name="duration_seconds" type="number" min="30" max="2592000" value="900" /></label>
+              <label>原因<input name="reason" maxlength="300" placeholder="管理员人工处理" /></label>
+            </div>
+            <div class="data-note">封禁、移出和解除操作提交前会再次确认；机器人权限不足时任务会失败重试并保留审计记录。</div>
+            <div class="form-actions"><button id="submitGroupMemberAction" class="danger" type="submit">提交成员操作</button></div>
+          </form>
+        </div>
+
         <div id="dataTab" class="tab-panel" hidden>
           <div class="panel-head"><div><span class="eyebrow">备份与迁移</span><h2>数据工具</h2><p>导出完整备份、商品 CSV，或从 JSON 恢复数据。</p></div></div>
           <div class="tool-grid">
@@ -166,6 +281,18 @@
           <label>商品分类<select id="productCategory" name="category_id" required><option value="">请选择分类</option></select><small>分类需要先在“分类管理”中创建。</small></label>
           <label>价格文字<input name="price_text" required placeholder="实时询价" /></label>
           <label>库存状态<input name="stock_text" required placeholder="当日库存" /></label>
+          <div class="commerce-fields full" data-commerce-fields>
+            <div class="form-section-title">下单与库存</div>
+            <div class="form-grid">
+              <label>下单价格（元）<input name="price_yuan" type="number" min="0" step="0.01" inputmode="decimal" placeholder="留空表示仅询价" /><small>服务端下单将使用对应的分单位价格，不信任前端金额。</small></label>
+              <label>币种<select name="currency"><option value="CNY">人民币 CNY</option></select></label>
+              <label>商品类型<select name="product_type"><option value="physical">实物商品</option><option value="digital">数字商品</option></select></label>
+              <label>库存数量<input name="inventory_count" type="number" min="0" step="1" inputmode="numeric" placeholder="0" /></label>
+              <label class="check full"><input name="unlimited_inventory" type="checkbox" checked /> 无限库存（启用后忽略库存数量）</label>
+              <label class="full">购买说明<textarea name="purchase_instructions" rows="3" placeholder="规格、配送或购买前须知"></textarea></label>
+              <label class="full">售后说明<textarea name="after_sales_instructions" rows="3" placeholder="退款、换货或售后规则"></textarea></label>
+            </div>
+          </div>
           <label>备用图标<input name="emoji" maxlength="8" placeholder="🥩" /></label>
           <label>显示顺序<input name="sort_order" type="number" value="0" /></label>
           <label class="full">商品介绍<textarea name="description" rows="5"></textarea></label>

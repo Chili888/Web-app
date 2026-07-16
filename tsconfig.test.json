@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist-test",
+    "rootDir": ".",
+    "declaration": false
+  },
+  "include": ["apps/bot-backend/src/**/*.ts", "apps/bot-backend/test/**/*.ts"],
+  "exclude": ["node_modules", "dist", "dist-test"]
+}

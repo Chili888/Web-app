@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes" />
   <meta name="theme-color" content="#111827" />
   <title>国内精品肉铺</title>
-  <link rel="stylesheet" href="./assets/style.css?v=20260715-4" />
-  <link rel="stylesheet" href="./assets/media-fix.css?v=20260715-1" />
+  <link rel="stylesheet" href="./assets/style.css?v=20260716-7" />
+  <link rel="stylesheet" href="./assets/media-fix.css?v=20260715-2" />
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="./config.js"></script>
-  <script defer src="./assets/app.js?v=20260715-4"></script>
+  <script defer src="./assets/app.js?v=20260716-7"></script>
 </head>
 <body>
   <header class="top">
@@ -22,12 +22,18 @@
           <div id="shopSubtitle" class="mini">商品浏览 · 选品咨询</div>
         </div>
       </div>
-      <button class="topbtn" type="button" data-action="open-selected">选品 <span id="topCount">0</span></button>
+      <div class="top-actions">
+        <button class="topbtn" type="button" data-action="open-selected">选品 <span id="topCount">0</span></button>
+      </div>
     </div>
   </header>
 
   <main class="wrap">
     <div id="modeNotice" class="mode-notice" hidden></div>
+    <div id="networkNotice" class="network-notice" role="status" hidden>
+      <span>网络连接已断开，当前内容可能不是最新。</span>
+      <button type="button" data-action="retry-data">重新加载</button>
+    </div>
 
     <section class="hero">
       <div class="heroBox">
@@ -88,7 +94,7 @@
     </section>
 
     <section class="info">
-      <div class="sectionTitle"><div><span class="section-kicker">下单前请阅读</span><h2>购买说明</h2></div></div>
+      <div class="sectionTitle"><div><span class="section-kicker">选购前请阅读</span><h2>购买说明</h2></div></div>
       <div class="infoGrid">
         <div class="infoItem"><div class="info-icon">¥</div><div><b>价格说明</b><span id="priceNotice"></span></div></div>
         <div class="infoItem"><div class="info-icon">库</div><div><b>库存说明</b><span id="stockNotice"></span></div></div>
@@ -136,8 +142,8 @@
       </div>
       <div id="selectedList" class="list"></div>
       <div class="sheetBtns">
-        <button class="shareAll" type="button" data-action="share-selected">分享整份选品</button>
-        <button class="consult" type="button" data-action="consult-selected">复制并咨询</button>
+        <button class="shareAll" type="button" data-action="share-selected">分享选品</button>
+        <button class="consult" type="button" data-action="consult-selected">咨询客服</button>
       </div>
     </div>
   </div>
