@@ -2,6 +2,8 @@
 
 Telegram Mini App 商品前台、商品管理页面和 Telegram 运营后端。后端只使用 Telegram Bot API，采用 Webhook、PostgreSQL 队列、Worker、Outbox、重试和 dead-letter。
 
+正式 Mini App 地址为 `https://bot.cverseintl.cloud/`，管理后台为 `https://bot.cverseintl.cloud/admin/`。GitHub Pages 仅作为临时回滚入口。
+
 ## 当前能力
 
 - 保留原有静态商品前台、分类、搜索、多图、推荐、选品清单、分享和客服入口。
@@ -65,7 +67,7 @@ JOIN_VERIFY_TIMEOUT_ACTION
 AUTO_REPLY_ENABLED
 ```
 
-`STOREFRONT_ORIGINS` 是逗号分隔的精确来源列表，不能包含路径。切换期间同时配置 `https://bot.cverseintl.cloud,https://chili888.github.io`，可保留 GitHub Pages回滚入口。`STOREFRONT_ORIGIN` 仅作旧版单来源兼容。
+`STOREFRONT_ORIGINS` 是逗号分隔的精确来源列表，不能包含路径。正式入口使用 `https://bot.cverseintl.cloud`；回滚窗口期间可同时保留 `https://chili888.github.io`。`STOREFRONT_ORIGIN` 仅作旧版单来源兼容。
 
 `SUPABASE_URL` 和 `SUPABASE_ANON_KEY` 用于后端调用 Supabase Auth 验证现有后台登录会话；它们是公开项目配置，不是 `service_role`。后端随后还会查询 `public.admin_profiles`，因此仅持有普通 Supabase 账号不能调用运营 API。
 
@@ -137,7 +139,7 @@ docker compose -f docker-compose.production.yml ps
 
 将 [`deploy/1panel/bot.cverseintl.cloud.locations.conf`](deploy/1panel/bot.cverseintl.cloud.locations.conf) 中的 location配置加入现有 1Panel HTTPS网站：`/api/`、`/telegram/webhook` 和 `/health` 转发到 API，其余路径转发到静态前端。修改 OpenResty前先备份网站配置并执行配置检查；不要改 DNS或 Webhook。
 
-服务器前端镜像使用 [`deploy/frontend/config.production.js`](deploy/frontend/config.production.js)，其 `pageUrl` 和 `apiBaseUrl` 均为 `bot.cverseintl.cloud`。仓库根目录的 `config.js` 保持 GitHub Pages地址，因此旧入口仍可回滚。人工验收全部通过前，不修改 BotFather Mini App URL或数据库中的机器人商城按钮 URL。
+服务器前端镜像使用 [`deploy/frontend/config.production.js`](deploy/frontend/config.production.js)，其 `pageUrl` 和 `apiBaseUrl` 均为 `bot.cverseintl.cloud`。Mini App 正式 URL 已切换到该域名。仓库根目录的 `config.js` 保持 GitHub Pages地址，仅用于临时回滚。
 
 回滚时恢复旧 OpenResty配置，使 `/` 重新指向 API或旧入口；再用上一 API/Worker镜像标签重新创建容器。不要执行 `docker compose down -v`，也不要删除 `support-db-data`。
 
@@ -203,3 +205,9 @@ Webhook只在 API、Worker、数据库和 HTTPS都通过验收后由人工设置
 - 内部客服群、Forum话题和复杂客服工单状态流。
 
 旧表和历史 migration 为数据保留与回滚而存在；不得据此重新开放浏览器接口。重复消息指纹、刷屏频率检测和完整群治理统计页面仍需后续完善。
+
+## 已知非阻塞项
+
+- Docker PostgreSQL 中保留 8 条历史 `telegram_updates` dead-letter，原因是旧版 `timestamptz < interval` 参数推断错误。不自动重试或清理这些历史记录。
+- Supabase 分类批量迁移和商品排序未来可改为 RPC/数据库事务，当前不是生产阻塞项。
+- 独立安全优化建议：在 1Panel/OpenResty 中关闭 TLS 1.0/1.1，仅保留 TLS 1.2/1.3；本项不属于应用代码变更。
