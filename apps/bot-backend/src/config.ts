@@ -12,7 +12,7 @@ export interface AppConfig {
   supabaseAnonKey: string | null;
   databaseUrl: string;
   appBaseUrl: string;
-  storefrontOrigin: string | null;
+  storefrontOrigins: Set<string>;
   appTimezone: string;
   joinVerifyEnabled: boolean;
   joinVerifyTimeoutSeconds: number;
@@ -74,6 +74,15 @@ function optionalOrigin(name: string, value: string | undefined): string | null 
   }
 }
 
+function originSet(env: NodeJS.ProcessEnv): Set<string> {
+  const source = env.STOREFRONT_ORIGINS?.trim() || env.STOREFRONT_ORIGIN?.trim() || "";
+  return new Set(source.split(",").map((entry) => entry.trim()).filter(Boolean).map((entry) => {
+    const origin = optionalOrigin("STOREFRONT_ORIGINS", entry);
+    if (!origin) throw new Error("STOREFRONT_ORIGINS contains an empty origin");
+    return origin;
+  }));
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const adminSource = env.TELEGRAM_ADMIN_IDS?.trim() || env.TELEGRAM_AGENT_ALLOWLIST?.trim() || "";
   if (!adminSource) throw new Error("TELEGRAM_ADMIN_IDS is required");
@@ -104,7 +113,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     supabaseAnonKey: env.SUPABASE_ANON_KEY?.trim() || null,
     databaseUrl: required("DATABASE_URL", env),
     appBaseUrl: env.APP_BASE_URL?.trim() || "http://localhost:3000",
-    storefrontOrigin: optionalOrigin("STOREFRONT_ORIGIN", env.STOREFRONT_ORIGIN),
+    storefrontOrigins: originSet(env),
     appTimezone: timezone,
     joinVerifyEnabled: booleanValue("JOIN_VERIFY_ENABLED", env.JOIN_VERIFY_ENABLED, true),
     joinVerifyTimeoutSeconds: positiveInteger("JOIN_VERIFY_TIMEOUT_SECONDS", env.JOIN_VERIFY_TIMEOUT_SECONDS, 600),
