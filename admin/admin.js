@@ -969,6 +969,7 @@
     const code = String(error?.message || error || "");
     if (code === "backend_not_configured") return "后端 API 地址尚未配置";
     if (code === "admin_session_missing" || code === "missing_admin_auth" || code === "invalid_admin_auth") return "管理员登录已失效，请重新登录";
+    if (code === "admin_auth_unavailable") return "管理员身份验证服务暂时不可用，请稍后重试";
     if (code === "forbidden") return "当前账号没有运营权限";
     if (code === "version_status_or_operation_conflict") return "记录已变化或已有操作处理中，请刷新后重试";
     if (code === "duplicate_request") return "该操作已提交，请勿重复点击";

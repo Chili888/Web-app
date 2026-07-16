@@ -676,14 +676,6 @@ export class PostgresSupportStore implements SupportStore {
     };
   }
 
-  async isAdminProfile(userId: string): Promise<boolean> {
-    const result = await this.pool.query<{allowed: boolean} & QueryResultRow>(
-      "select exists (select 1 from public.admin_profiles where user_id = $1::uuid) as allowed",
-      [userId]
-    );
-    return result.rows[0]?.allowed === true;
-  }
-
   async createJoinVerification(input: CreateJoinVerificationInput) {
     const client = await this.pool.connect();
     try {

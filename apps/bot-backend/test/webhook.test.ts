@@ -46,6 +46,24 @@ describe("Telegram webhook", () => {
     assert.equal(response.headers["x-frame-options"], "DENY");
   });
 
+  it("allows CORS preflight from APP_BASE_URL without extra configuration", async () => {
+    const config = testConfig({storefrontOrigins: new Set()});
+    app = buildApp({config, store: new InMemorySupportStore(), logger: silentLogger});
+
+    const response = await app.inject({
+      method: "OPTIONS",
+      url: "/api/admin/bot/settings",
+      headers: {
+        origin: config.appBaseUrl,
+        "access-control-request-method": "GET",
+        "access-control-request-headers": "authorization"
+      }
+    });
+
+    assert.equal(response.statusCode, 204);
+    assert.equal(response.headers["access-control-allow-origin"], config.appBaseUrl);
+  });
+
   it("rejects missing or invalid webhook secrets", async () => {
     const config = testConfig();
     const store = new InMemorySupportStore();

@@ -196,7 +196,6 @@ export interface SupportStore {
   createAutoReplyRule(input: SaveAutoReplyRuleInput): Promise<AutoReplyRuleDetails>;
   updateAutoReplyRule(id: string, expectedVersion: number, input: SaveAutoReplyRuleInput): Promise<AutoReplyRuleDetails | null>;
   getSupportStats(now: Date): Promise<SupportStats>;
-  isAdminProfile(userId: string): Promise<boolean>;
 
   createJoinVerification(input: CreateJoinVerificationInput): Promise<{record: JoinVerificationRecord; created: boolean}>;
   setJoinVerificationMessage(id: string, messageId: number): Promise<void>;

@@ -25,6 +25,62 @@ describe("administrator channel API", () => {
     assert.equal(forbidden.statusCode, 403);
   });
 
+  it("authorizes an existing Supabase administrator through RLS", async () => {
+    const originalFetch = globalThis.fetch;
+    const requestedUrls: string[] = [];
+    const config = testConfig({
+      supabaseUrl: "https://project.supabase.co",
+      supabaseAnonKey: "publishable-key"
+    });
+    globalThis.fetch = async (input) => {
+      const url = fetchInputUrl(input);
+      requestedUrls.push(url);
+      if (url.endsWith("/auth/v1/user")) {
+        return Response.json({id: "6b38782a-d9bc-4383-9a66-96fa40e8f08e"});
+      }
+      if (url.includes("/rest/v1/admin_profiles?")) {
+        return Response.json([{user_id: "6b38782a-d9bc-4383-9a66-96fa40e8f08e"}]);
+      }
+      return Response.json({}, {status: 404});
+    };
+    try {
+      app = buildApp({config, store: new InMemorySupportStore(), logger: silentLogger});
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/admin/bot/settings",
+        headers: {authorization: "Bearer valid-supabase-session"}
+      });
+      assert.equal(response.statusCode, 200);
+      assert.equal(requestedUrls.length, 2);
+      assert.match(requestedUrls[1] ?? "", /admin_profiles/);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("rejects a valid Supabase user without an administrator profile", async () => {
+    const originalFetch = globalThis.fetch;
+    const config = testConfig({
+      supabaseUrl: "https://project.supabase.co",
+      supabaseAnonKey: "publishable-key"
+    });
+    globalThis.fetch = async (input) => fetchInputUrl(input).endsWith("/auth/v1/user")
+      ? Response.json({id: "6b38782a-d9bc-4383-9a66-96fa40e8f08e"})
+      : Response.json([]);
+    try {
+      app = buildApp({config, store: new InMemorySupportStore(), logger: silentLogger});
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/admin/bot/settings",
+        headers: {authorization: "Bearer ordinary-supabase-session"}
+      });
+      assert.equal(response.statusCode, 403);
+      assert.deepEqual(response.json(), {error: "forbidden"});
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("creates an authenticated draft and rejects a duplicate mutation", async () => {
     const config = testConfig();
     const store = new InMemorySupportStore();
@@ -194,6 +250,11 @@ describe("administrator channel API", () => {
     assert.equal(store.audits.at(-1)?.action, "auto_reply_rule_updated");
   });
 });
+
+function fetchInputUrl(input: string | URL | Request): string {
+  if (typeof input === "string") return input;
+  return input instanceof URL ? input.href : input.url;
+}
 
 function adminHeaders(token: string, idempotencyKey: string) {
   return {

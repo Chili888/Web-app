@@ -21,6 +21,8 @@ export interface BuildAppOptions {
 export function buildApp(options: BuildAppOptions): FastifyInstance {
   const app = Fastify({logger: false, bodyLimit: 1024 * 1024});
   const adminRateLimits = new Map<number, {windowStartedAt: number; count: number}>();
+  const allowedOrigins = new Set(options.config.storefrontOrigins);
+  allowedOrigins.add(new URL(options.config.appBaseUrl).origin);
 
   app.addHook("onRequest", async (request, reply) => {
     reply.header("X-Content-Type-Options", "nosniff");
@@ -28,7 +30,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
     reply.header("X-Frame-Options", "DENY");
     reply.header("Cache-Control", "no-store");
     const origin = request.headers.origin;
-    const allowed = typeof origin === "string" && options.config.storefrontOrigins.has(origin);
+    const allowed = typeof origin === "string" && allowedOrigins.has(origin);
     if (allowed) {
       reply.header("Access-Control-Allow-Origin", origin);
       reply.header("Vary", "Origin");
@@ -86,13 +88,13 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
 
 
   app.get("/api/admin/bot/settings", async (request, reply) => {
-    const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const admin = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
     return reply.send(await options.store.getBotSettings());
   });
 
   app.patch("/api/admin/bot/settings", async (request, reply) => {
-    const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const admin = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
     const parsed = parseBotSettings(request.body);
     if ("error" in parsed) return reply.code(400).send({error: parsed.error});
@@ -116,13 +118,13 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   });
 
   app.get("/api/admin/bot/auto-replies", async (request, reply) => {
-    const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const admin = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
     return reply.send({items: await options.store.listAutoReplyRules()});
   });
 
   app.post("/api/admin/bot/auto-replies", async (request, reply) => {
-    const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const admin = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
     const parsed = parseAutoReplyRule(request.body);
     if ("error" in parsed) return reply.code(400).send({error: parsed.error});
@@ -137,7 +139,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   });
 
   app.patch("/api/admin/bot/auto-replies/:id", async (request, reply) => {
-    const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const admin = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
     const id = parseUuid((request.params as {id?: unknown}).id);
     const expectedVersion = parseExpectedVersion(request.body);
@@ -157,7 +159,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   });
 
   app.get("/api/admin/channel-posts", async (request, reply) => {
-    const adminId = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const adminId = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!adminId.ok) return reply.code(adminId.status).send({error: adminId.error});
     const query = request.query as {status?: unknown; limit?: unknown};
     const status = typeof query.status === "string" && query.status ? query.status : null;
@@ -170,7 +172,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   });
 
   app.post("/api/admin/channel-posts", async (request, reply) => {
-    const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const admin = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
     const parsed = parseChannelPostInput(request.body, options.config, new Date());
     if ("error" in parsed) return reply.code(400).send({error: parsed.error});
@@ -189,7 +191,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   });
 
   app.patch("/api/admin/channel-posts/:id", async (request, reply) => {
-    const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const admin = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
     const id = parseUuid((request.params as {id?: unknown}).id);
     if (!id) return reply.code(400).send({error: "invalid_id"});
@@ -219,7 +221,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
 
   for (const action of ["cancel", "retry"] as const) {
     app.post(`/api/admin/channel-posts/:id/${action}`, async (request, reply) => {
-      const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+      const admin = await authorizeAdmin(request, options.config, adminRateLimits);
       if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
       const id = parseUuid((request.params as {id?: unknown}).id);
       const expectedVersion = parseExpectedVersion(request.body);
@@ -242,7 +244,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   }
 
   app.post("/api/admin/channel-posts/:id/actions", async (request, reply) => {
-    const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const admin = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
     const id = parseUuid((request.params as {id?: unknown}).id);
     if (!id) return reply.code(400).send({error: "invalid_id"});
@@ -276,19 +278,19 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   });
 
   app.get("/api/admin/group/moderation-settings", async (request, reply) => {
-    const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const admin = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
     return reply.send(await options.store.getGroupModerationSettings());
   });
 
   app.get("/api/admin/group/moderation-rules", async (request, reply) => {
-    const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const admin = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
     return reply.send({items: await options.store.listModerationRules()});
   });
 
   app.post("/api/admin/group/moderation-rules", async (request, reply) => {
-    const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const admin = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
     const parsed = parseModerationRule(request.body);
     if ("error" in parsed) return reply.code(400).send({error: parsed.error});
@@ -303,7 +305,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   });
 
   app.patch("/api/admin/group/moderation-rules/:id", async (request, reply) => {
-    const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const admin = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
     const id = parseUuid((request.params as {id?: unknown}).id);
     if (!id) return reply.code(400).send({error: "invalid_id"});
@@ -323,7 +325,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   });
 
   app.patch("/api/admin/group/moderation-settings", async (request, reply) => {
-    const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const admin = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
     const parsed = parseGroupModerationSettings(request.body);
     if ("error" in parsed) return reply.code(400).send({error: parsed.error});
@@ -343,7 +345,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
   });
 
   app.post("/api/admin/group/members/:userId/actions", async (request, reply) => {
-    const admin = await authorizeAdmin(request, options.config, options.store, adminRateLimits);
+    const admin = await authorizeAdmin(request, options.config, adminRateLimits);
     if (!admin.ok) return reply.code(admin.status).send({error: admin.error});
     const userId = Number((request.params as {userId?: unknown}).userId);
     if (!Number.isSafeInteger(userId) || userId <= 0) return reply.code(400).send({error: "invalid_user_id"});
@@ -488,7 +490,6 @@ function isHttpsUrl(value: string): boolean {
 async function authorizeAdmin(
   request: FastifyRequest,
   config: AppConfig,
-  store: SupportStore,
   limits: Map<number, {windowStartedAt: number; count: number}>
 ): Promise<{ok: true; id: number} | {ok: false; error: string; status: 401 | 403 | 429}> {
   const initData = request.headers["x-telegram-init-data"];
@@ -519,7 +520,16 @@ async function authorizeAdmin(
       const profile = await response.json() as {id?: unknown};
       const authUserId = parseUuid(profile.id);
       if (!authUserId) return {ok: false, error: "invalid_admin_auth", status: 401};
-      if (!await store.isAdminProfile(authUserId)) return {ok: false, error: "forbidden", status: 403};
+      const profileResponse = await fetch(
+        `${config.supabaseUrl}/rest/v1/admin_profiles?user_id=eq.${encodeURIComponent(authUserId)}&select=user_id&limit=1`,
+        {
+          headers: {authorization: `Bearer ${token}`, apikey: config.supabaseAnonKey},
+          signal: AbortSignal.timeout(5_000)
+        }
+      );
+      if (!profileResponse.ok) return {ok: false, error: "admin_auth_unavailable", status: 401};
+      const profiles = await profileResponse.json() as unknown;
+      if (!Array.isArray(profiles) || profiles.length === 0) return {ok: false, error: "forbidden", status: 403};
     } catch {
       return {ok: false, error: "admin_auth_unavailable", status: 401};
     }

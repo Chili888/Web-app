@@ -55,7 +55,6 @@ export class InMemorySupportStore implements SupportStore {
   readonly adminApiRequests = new Set<string>();
   readonly moderationRules: ModerationRuleRecord[] = [];
   readonly moderationActions: RecordModerationActionInput[] = [];
-  readonly adminProfileIds = new Set<string>();
   settings: BotSettingsRecord = {
     version: 1,
     welcomeMessage: [
@@ -253,10 +252,6 @@ export class InMemorySupportStore implements SupportStore {
       deadLetters: [...this.updates.values()].filter((item) => item.status === "dead_letter").length
         + [...this.outbox.values()].filter((item) => item.status === "dead_letter").length
     };
-  }
-
-  async isAdminProfile(userId: string): Promise<boolean> {
-    return this.adminProfileIds.has(userId);
   }
 
   async createJoinVerification(input: CreateJoinVerificationInput) {
