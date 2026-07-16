@@ -18,15 +18,27 @@ describe("environment configuration", () => {
     assert.equal(config.joinVerifyTimeoutAction, "kick");
     assert.equal(config.appTimezone, "Asia/Shanghai");
     assert.equal(config.telegramInitDataMaxAgeSeconds, 900);
-    assert.equal(config.storefrontOrigin, null);
+    assert.deepEqual([...config.storefrontOrigins], []);
   });
 
   it("normalizes an exact storefront CORS origin and rejects paths", () => {
     const config = loadConfig({...BASE_ENV, TELEGRAM_ADMIN_IDS: "7141080131", STOREFRONT_ORIGIN: "https://shop.example.test/"});
-    assert.equal(config.storefrontOrigin, "https://shop.example.test");
+    assert.deepEqual([...config.storefrontOrigins], ["https://shop.example.test"]);
     assert.throws(
       () => loadConfig({...BASE_ENV, TELEGRAM_ADMIN_IDS: "7141080131", STOREFRONT_ORIGIN: "https://shop.example.test/app"}),
-      /STOREFRONT_ORIGIN/
+      /STOREFRONT_ORIGINS/
+    );
+  });
+
+  it("allows the server storefront and GitHub Pages rollback origin together", () => {
+    const config = loadConfig({
+      ...BASE_ENV,
+      TELEGRAM_ADMIN_IDS: "7141080131",
+      STOREFRONT_ORIGINS: "https://bot.cverseintl.cloud,https://chili888.github.io/"
+    });
+    assert.deepEqual(
+      [...config.storefrontOrigins],
+      ["https://bot.cverseintl.cloud", "https://chili888.github.io"]
     );
   });
 
