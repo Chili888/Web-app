@@ -83,16 +83,16 @@
     try {
       if (window.Telegram?.WebApp) {
         const webApp = window.Telegram.WebApp;
-        applyTelegramTheme(webApp);
-        webApp.onEvent?.("themeChanged", () => applyTelegramTheme(webApp));
+        applyFixedLightTheme(webApp);
+        webApp.onEvent?.("themeChanged", () => applyFixedLightTheme(webApp));
         webApp.BackButton?.onClick(handleTelegramBack);
         webApp.ready();
         webApp.expand();
       } else {
-        watchSystemTheme();
+        applyFixedLightTheme();
       }
     } catch (error) {
-      watchSystemTheme();
+      applyFixedLightTheme();
       console.warn("Telegram WebApp initialization failed", {name: String(error?.name || "unknown").slice(0, 40)});
     }
   }
@@ -796,44 +796,22 @@
     else backButton.hide();
   }
 
-  function applyTelegramTheme(webApp) {
+  function applyFixedLightTheme(webApp) {
     const root = document.documentElement;
-    const dark = webApp?.colorScheme === "dark";
-    root.dataset.theme = dark ? "dark" : "light";
-    const colors = {
-      "--bg": webApp?.themeParams?.bg_color,
-      "--surface": webApp?.themeParams?.secondary_bg_color,
-      "--text": webApp?.themeParams?.text_color,
-      "--muted": webApp?.themeParams?.hint_color
-    };
-    Object.entries(colors).forEach(([property, value]) => {
-      root.style.removeProperty(property);
-      if (/^#[0-9a-f]{6}$/iu.test(String(value || ""))) root.style.setProperty(property, value);
-    });
-    updateThemeChrome(dark);
+    root.dataset.theme = "light";
+    ["--bg", "--surface", "--text", "--muted"].forEach((property) => root.style.removeProperty(property));
+    updateThemeChrome();
     try {
-      webApp.setHeaderColor?.(dark ? "#1d2532" : "#ffffff");
-      webApp.setBackgroundColor?.(dark ? "#111722" : "#f3f5f7");
-      webApp.setBottomBarColor?.(dark ? "#1d2532" : "#ffffff");
+      webApp?.setHeaderColor?.("#ffffff");
+      webApp?.setBackgroundColor?.("#f3f5f7");
+      webApp?.setBottomBarColor?.("#ffffff");
     } catch {
       // Older Telegram clients do not support every color API.
     }
   }
 
-  function watchSystemTheme() {
-    const media = window.matchMedia?.("(prefers-color-scheme: dark)");
-    const apply = () => {
-      const dark = Boolean(media?.matches);
-      document.documentElement.dataset.theme = dark ? "dark" : "light";
-      updateThemeChrome(dark);
-    };
-    apply();
-    media?.addEventListener?.("change", apply);
-  }
-
-  function updateThemeChrome(dark) {
-    const color = dark ? "#111722" : "#f3f5f7";
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", color);
+  function updateThemeChrome() {
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#f3f5f7");
   }
 
   function updateNetworkState() {
