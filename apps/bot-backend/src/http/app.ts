@@ -24,7 +24,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
 
   app.addHook("onRequest", async (request, reply) => {
     const origin = request.headers.origin;
-    const allowed = typeof origin === "string" && origin === options.config.storefrontOrigin;
+    const allowed = typeof origin === "string" && options.config.storefrontOrigins.has(origin);
     if (allowed) {
       reply.header("Access-Control-Allow-Origin", origin);
       reply.header("Vary", "Origin");
