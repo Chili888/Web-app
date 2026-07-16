@@ -28,6 +28,21 @@ describe("Telegram webhook", () => {
     });
   });
 
+  it("describes the service at the root route", async () => {
+    const config = testConfig();
+    app = buildApp({config, store: new InMemorySupportStore(), logger: silentLogger});
+
+    const response = await app.inject({method: "GET", url: "/"});
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json(), {
+      service: "TJ Telegram Center",
+      status: "running",
+      health: "/health",
+      storefront: "https://chili888.github.io/Web-app/"
+    });
+  });
+
   it("rejects missing or invalid webhook secrets", async () => {
     const config = testConfig();
     const store = new InMemorySupportStore();
