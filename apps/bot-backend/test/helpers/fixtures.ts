@@ -23,7 +23,7 @@ export function testConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     supabaseAnonKey: null,
     databaseUrl: "postgresql://test",
     appBaseUrl: "https://example.test",
-    storefrontOrigin: "https://shop.example.test",
+    storefrontOrigins: new Set(["https://shop.example.test"]),
     appTimezone: "Asia/Shanghai",
     joinVerifyEnabled: true,
     joinVerifyTimeoutSeconds: 600,

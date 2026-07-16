@@ -12,7 +12,7 @@
     channel_username: "TJ_NO1_ice",
     group_username: "TJ_ice_Group",
     price_notice: "页面为参考或实时询价，最终价格以客服确认为准。",
-    stock_notice: "库存随时变化，下单前请先咨询当日库存与规格。",
+    stock_notice: "库存随时变化，选品前请先咨询当日库存与规格。",
     delivery_notice: "配送范围、时效及售后标准由客服根据地区说明。",
     anti_fraud_notice: "仅认准官方客服、频道和群组，不向其他账号付款。"
   };
@@ -68,10 +68,11 @@
 
     state.supabase = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
     try {
-      await Promise.all([loadSettings(), loadCategories(), loadProducts()]);
+      await refreshStoreData();
       state.usingDemo = false;
       $("modeNotice").hidden = true;
       subscribeChanges();
+      startRefreshFallback();
     } catch (error) {
       console.warn("Store data load failed", {code: String(error?.code || "unknown").slice(0, 40)});
       useDemo("数据库暂时无法连接，当前显示演示商品。");
@@ -219,6 +220,30 @@
     renderCategories();
     renderFeatured();
     renderProducts();
+  }
+
+  let refreshInFlight = false;
+
+  async function refreshStoreData() {
+    if (refreshInFlight || !state.supabase) return;
+    refreshInFlight = true;
+    try {
+      await Promise.all([loadSettings(), loadCategories()]);
+      await loadProducts();
+    } finally {
+      refreshInFlight = false;
+    }
+  }
+
+  function startRefreshFallback() {
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      refreshStoreData().catch((error) => {
+        console.warn("Store refresh failed", {code: String(error?.code || "unknown").slice(0, 40)});
+      });
+    };
+    window.setInterval(refresh, 15_000);
+    window.addEventListener("focus", refresh);
   }
 
   function subscribeChanges() {

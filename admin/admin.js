@@ -1154,7 +1154,7 @@
         const inventory = form.elements.inventory_count.value.trim();
         const priceMinor = priceYuan === "" ? null : Math.round(Number(priceYuan) * 100);
         const inventoryCount = inventory === "" ? null : Number(inventory);
-        if (priceMinor != null && (!Number.isSafeInteger(priceMinor) || priceMinor < 0)) throw new Error("下单价格格式不正确");
+        if (priceMinor != null && (!Number.isSafeInteger(priceMinor) || priceMinor < 0)) throw new Error("参考价格格式不正确");
         if (inventoryCount != null && (!Number.isSafeInteger(inventoryCount) || inventoryCount < 0)) throw new Error("库存数量必须是非负整数");
         Object.assign(payload, {
           price_minor: priceMinor,

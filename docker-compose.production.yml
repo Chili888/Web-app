@@ -1,4 +1,20 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - support-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    init: true
+    restart: unless-stopped
+
   migrate:
     profiles: ["tools"]
     image: ${APP_IMAGE:-tj-telegram-center:local}
@@ -6,8 +22,12 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${SUPABASE_DATABASE_URL:?Set SUPABASE_DATABASE_URL in .env}
+      DATABASE_SSL_MODE: disable
+      DATABASE_SSL_CA_BASE64: ""
     command: ["node", "dist/apps/bot-backend/src/cli/migrate.js"]
+    depends_on:
+      db:
+        condition: service_healthy
     restart: "no"
 
   api:
@@ -16,10 +36,14 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${SUPABASE_DATABASE_URL:?Set SUPABASE_DATABASE_URL in .env}
+      DATABASE_SSL_MODE: disable
+      DATABASE_SSL_CA_BASE64: ""
     command: ["node", "dist/apps/bot-backend/src/server.js"]
     ports:
       - "127.0.0.1:${PORT:-3000}:${PORT:-3000}"
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 15s
@@ -35,8 +59,12 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: ${SUPABASE_DATABASE_URL:?Set SUPABASE_DATABASE_URL in .env}
+      DATABASE_SSL_MODE: disable
+      DATABASE_SSL_CA_BASE64: ""
     command: ["node", "dist/apps/bot-backend/src/worker.js"]
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "dist/apps/bot-backend/src/cli/worker-health.js"]
       interval: 20s
@@ -45,3 +73,22 @@ services:
       start_period: 30s
     init: true
     restart: unless-stopped
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-tj-telegram-center-frontend:local}
+    build:
+      context: .
+      target: frontend
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    init: true
+    restart: unless-stopped
+
+volumes:
+  support-db-data:

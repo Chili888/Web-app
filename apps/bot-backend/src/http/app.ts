@@ -24,7 +24,7 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
 
   app.addHook("onRequest", async (request, reply) => {
     const origin = request.headers.origin;
-    const allowed = typeof origin === "string" && origin === options.config.storefrontOrigin;
+    const allowed = typeof origin === "string" && options.config.storefrontOrigins.has(origin);
     if (allowed) {
       reply.header("Access-Control-Allow-Origin", origin);
       reply.header("Vary", "Origin");
@@ -36,6 +36,13 @@ export function buildApp(options: BuildAppOptions): FastifyInstance {
       return allowed ? reply.code(204).send() : reply.code(403).send({error: "origin_not_allowed"});
     }
   });
+
+  app.get("/", async (_request, reply) => reply.send({
+    service: "TJ Telegram Center",
+    status: "running",
+    health: "/health",
+    storefront: "https://chili888.github.io/Web-app/"
+  }));
 
   app.get("/health", async (_request, reply) => {
     try {

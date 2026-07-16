@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="./admin.css?v=20260716-7" />
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script defer src="../config.js"></script>
-  <script defer src="./admin.js?v=20260716-7"></script>
+  <script defer src="./admin.js?v=20260716-8"></script>
 </head>
 <body>
   <div id="setupRequired" class="setup" hidden>
@@ -282,15 +282,15 @@
           <label>价格文字<input name="price_text" required placeholder="实时询价" /></label>
           <label>库存状态<input name="stock_text" required placeholder="当日库存" /></label>
           <div class="commerce-fields full" data-commerce-fields>
-            <div class="form-section-title">下单与库存</div>
+            <div class="form-section-title">展示与库存</div>
             <div class="form-grid">
-              <label>下单价格（元）<input name="price_yuan" type="number" min="0" step="0.01" inputmode="decimal" placeholder="留空表示仅询价" /><small>服务端下单将使用对应的分单位价格，不信任前端金额。</small></label>
+              <label>参考价格（元）<input name="price_yuan" type="number" min="0" step="0.01" inputmode="decimal" placeholder="留空表示仅询价" /><small>仅作为商品内容记录，Mini App 不创建订单或收款。</small></label>
               <label>币种<select name="currency"><option value="CNY">人民币 CNY</option></select></label>
               <label>商品类型<select name="product_type"><option value="physical">实物商品</option><option value="digital">数字商品</option></select></label>
               <label>库存数量<input name="inventory_count" type="number" min="0" step="1" inputmode="numeric" placeholder="0" /></label>
               <label class="check full"><input name="unlimited_inventory" type="checkbox" checked /> 无限库存（启用后忽略库存数量）</label>
               <label class="full">购买说明<textarea name="purchase_instructions" rows="3" placeholder="规格、配送或购买前须知"></textarea></label>
-              <label class="full">售后说明<textarea name="after_sales_instructions" rows="3" placeholder="退款、换货或售后规则"></textarea></label>
+              <label class="full">售后说明<textarea name="after_sales_instructions" rows="3" placeholder="品质问题、换货或售后规则"></textarea></label>
             </div>
           </div>
           <label>备用图标<input name="emoji" maxlength="8" placeholder="🥩" /></label>
