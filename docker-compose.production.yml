@@ -1,0 +1,47 @@
+services:
+  migrate:
+    profiles: ["tools"]
+    image: ${APP_IMAGE:-tj-telegram-center:local}
+    build: .
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${SUPABASE_DATABASE_URL:?Set SUPABASE_DATABASE_URL in .env}
+    command: ["node", "dist/apps/bot-backend/src/cli/migrate.js"]
+    restart: "no"
+
+  api:
+    image: ${APP_IMAGE:-tj-telegram-center:local}
+    build: .
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${SUPABASE_DATABASE_URL:?Set SUPABASE_DATABASE_URL in .env}
+    command: ["node", "dist/apps/bot-backend/src/server.js"]
+    ports:
+      - "127.0.0.1:${PORT:-3000}:${PORT:-3000}"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    init: true
+    restart: unless-stopped
+
+  worker:
+    image: ${APP_IMAGE:-tj-telegram-center:local}
+    build: .
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${SUPABASE_DATABASE_URL:?Set SUPABASE_DATABASE_URL in .env}
+    command: ["node", "dist/apps/bot-backend/src/worker.js"]
+    healthcheck:
+      test: ["CMD", "node", "dist/apps/bot-backend/src/cli/worker-health.js"]
+      interval: 20s
+      timeout: 8s
+      retries: 3
+      start_period: 30s
+    init: true
+    restart: unless-stopped

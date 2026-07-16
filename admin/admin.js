@@ -4,6 +4,7 @@
   const MAX_IMAGES = 10;
   const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
   const PRODUCT_FIELDS = ["name","category","category_id","image_url","image_urls","emoji","price_text","stock_text","description","is_active","is_featured","sort_order"];
+  const COMMERCE_PRODUCT_FIELDS = ["price_minor","currency","inventory_count","unlimited_inventory","sales_count","product_type","purchase_instructions","after_sales_instructions","deleted_at"];
   const CATEGORY_FIELDS = ["name","icon","description","sort_order","is_active"];
 
   const state = {
@@ -18,6 +19,14 @@
     settings: null,
     imageItems: [],
     multiImageReady: false,
+    commerceReady: false,
+    channelPosts: [],
+    channelLoaded: false,
+    botSettingsLoaded: false,
+    botSettings: null,
+    autoReplyRules: [],
+    moderationLoaded: false,
+    moderationRules: [],
     selectedIds: new Set()
   };
 
@@ -72,6 +81,18 @@
 
     $("settingsForm").addEventListener("submit", saveSettings);
     $("refreshProducts").addEventListener("click", refreshAll);
+    $("refreshChannelPosts").addEventListener("click", loadChannelPosts);
+    $("refreshBotSettings").addEventListener("click", loadBotSettings);
+    $("botSettingsForm").addEventListener("submit", saveBotSettings);
+    $("autoReplyForm").addEventListener("submit", saveAutoReplyRule);
+    $("moderationSettingsForm").addEventListener("submit", saveModerationSettings);
+    $("groupMemberActionForm").addEventListener("submit", submitGroupMemberAction);
+    $("moderationRuleForm").addEventListener("submit", saveModerationRule);
+    $("moderationRuleForm").elements.rule_type.addEventListener("change", updateModerationRuleFields);
+    updateModerationRuleFields();
+    document.querySelectorAll("[data-channel-submit]").forEach((button) => {
+      button.addEventListener("click", () => submitChannelPost(button.dataset.channelSubmit));
+    });
     $("productSearch").addEventListener("input", renderProductList);
     $("statusFilter").addEventListener("change", renderProductList);
     $("categoryFilter").addEventListener("change", renderProductList);
@@ -108,6 +129,15 @@
 
       const bulkAction = event.target.closest("[data-bulk-action]");
       if (bulkAction) handleBulkAction(bulkAction.dataset.bulkAction);
+
+      const channelAction = event.target.closest("[data-channel-action]");
+      if (channelAction) handleChannelAction(channelAction.dataset.channelAction, channelAction.dataset.channelId);
+
+      const ruleAction = event.target.closest("[data-rule-action]");
+      if (ruleAction) handleModerationRuleAction(ruleAction.dataset.ruleAction, ruleAction.dataset.ruleId);
+
+      const autoReplyAction = event.target.closest("[data-auto-reply-action]");
+      if (autoReplyAction) handleAutoReplyAction(autoReplyAction.dataset.autoReplyAction, autoReplyAction.dataset.autoReplyId);
 
       if (event.target === $("productModal")) closeProductModal();
       if (event.target === $("categoryModal")) closeCategoryModal();
@@ -241,6 +271,11 @@
       ? Object.prototype.hasOwnProperty.call(state.products[0], "image_urls")
       : await detectMultiImageColumn();
     $("multiImageUpgradeNotice").hidden = state.multiImageReady;
+    state.commerceReady = state.products.length
+      ? Object.prototype.hasOwnProperty.call(state.products[0], "price_minor")
+      : await detectCommerceColumns();
+    $("commerceUpgradeNotice").hidden = state.commerceReady;
+    setCommerceFieldsEnabled(state.commerceReady);
 
     refreshCategoryControls();
     updateStats();
@@ -254,6 +289,20 @@
     return !error;
   }
 
+  async function detectCommerceColumns() {
+    const {error} = await state.supabase.from("products").select("price_minor,inventory_count,deleted_at").limit(1);
+    return !error;
+  }
+
+  function setCommerceFieldsEnabled(enabled) {
+    const container = document.querySelector("[data-commerce-fields]");
+    if (!container) return;
+    container.classList.toggle("is-disabled", !enabled);
+    container.querySelectorAll("input,select,textarea").forEach((field) => {
+      field.disabled = !enabled;
+    });
+  }
+
   function renderProductList() {
     const query = $("productSearch").value.trim().toLowerCase();
     const status = $("statusFilter").value;
@@ -264,6 +313,8 @@
       const haystack = `${product.name || ""} ${product.category || ""} ${product.price_text || ""} ${product.stock_text || ""} ${product.description || ""}`.toLowerCase();
       if (!haystack.includes(query)) return false;
       if (categoryKey !== "all" && !productMatchesCategory(product, categoryKey)) return false;
+      if (status === "deleted") return Boolean(product.deleted_at);
+      if (product.deleted_at) return false;
       if (status === "active" && !product.is_active) return false;
       if (status === "inactive" && product.is_active) return false;
       if (status === "featured" && !product.is_featured) return false;
@@ -305,14 +356,15 @@
             <span class="badge">${escapeHtml(product.price_text || "实时询价")}</span>
             <span class="badge">${count ? `${count} 张图` : "无图片"}</span>
             ${product.is_featured ? '<span class="badge featured">推荐</span>' : ""}
-            <span class="badge ${product.is_active ? "live" : "off"}">${product.is_active ? "已上架" : "已下架"}</span>
+            ${product.deleted_at ? '<span class="badge off">已软删除</span>' : `<span class="badge ${product.is_active ? "live" : "off"}">${product.is_active ? "已上架" : "已下架"}</span>`}
           </div>
         </div>
         <div class="quick-actions">
+          ${product.deleted_at ? `<button title="恢复为下架商品" type="button" data-product-action="restore" data-product-id="${id}">恢复</button>` : `
           <button title="上移" type="button" data-product-action="move-up" data-product-id="${id}">↑</button>
           <button title="下移" type="button" data-product-action="move-down" data-product-id="${id}">↓</button>
           <button title="${product.is_featured ? "取消推荐" : "设为推荐"}" class="${product.is_featured ? "active-action" : ""}" type="button" data-product-action="toggle-featured" data-product-id="${id}">★</button>
-          <button title="${product.is_active ? "下架" : "上架"}" class="${product.is_active ? "active-action" : ""}" type="button" data-product-action="toggle-active" data-product-id="${id}">${product.is_active ? "显" : "隐"}</button>
+          <button title="${product.is_active ? "下架" : "上架"}" class="${product.is_active ? "active-action" : ""}" type="button" data-product-action="toggle-active" data-product-id="${id}">${product.is_active ? "显" : "隐"}</button>`}
         </div>
         <div class="row-actions">
           <button class="secondary" type="button" data-product-action="copy" data-product-id="${id}">复制信息</button>
@@ -323,11 +375,12 @@
   }
 
   function updateStats() {
-    $("statTotal").textContent = String(state.products.length);
-    $("statActive").textContent = String(state.products.filter((item) => item.is_active).length);
-    $("statInactive").textContent = String(state.products.filter((item) => !item.is_active).length);
-    $("statFeatured").textContent = String(state.products.filter((item) => item.is_featured).length);
-    $("statNoImage").textContent = String(state.products.filter((item) => !productImages(item).length).length);
+    const products = state.products.filter((item) => !item.deleted_at);
+    $("statTotal").textContent = String(products.length);
+    $("statActive").textContent = String(products.filter((item) => item.is_active).length);
+    $("statInactive").textContent = String(products.filter((item) => !item.is_active).length);
+    $("statFeatured").textContent = String(products.filter((item) => item.is_featured).length);
+    $("statNoImage").textContent = String(products.filter((item) => !productImages(item).length).length);
   }
 
   function refreshCategoryControls() {
@@ -427,12 +480,500 @@
     fillForm($("settingsForm"), state.settings);
   }
 
-  function switchTab(tabName) {
+  async function switchTab(tabName) {
     document.querySelectorAll(".nav").forEach((button) => button.classList.toggle("active", button.dataset.tab === tabName));
     $("productsTab").hidden = tabName !== "products";
     $("categoriesTab").hidden = tabName !== "categories";
+    $("botTab").hidden = tabName !== "bot";
+    $("channelTab").hidden = tabName !== "channel";
+    $("moderationTab").hidden = tabName !== "moderation";
     $("settingsTab").hidden = tabName !== "settings";
     $("dataTab").hidden = tabName !== "data";
+    if (tabName === "channel" && !state.channelLoaded) await loadChannelPosts();
+    if (tabName === "bot" && !state.botSettingsLoaded) await loadBotSettings();
+    if (tabName === "moderation" && !state.moderationLoaded) await loadModerationSettings();
+  }
+
+  async function loadBotSettings() {
+    try {
+      const [settings, rules] = await Promise.all([
+        backendRequest("/api/admin/bot/settings"),
+        backendRequest("/api/admin/bot/auto-replies")
+      ]);
+      state.botSettings = settings;
+      state.autoReplyRules = Array.isArray(rules.items) ? rules.items : [];
+      state.botSettingsLoaded = true;
+      $("botSettingsApiNotice").hidden = true;
+      const form = $("botSettingsForm");
+      form.elements.version.value = String(settings.version);
+      form.elements.welcome_message.value = settings.welcomeMessage || "";
+      form.elements.help_message.value = settings.helpMessage || "";
+      form.elements.why_us_message.value = settings.whyUsMessage || "";
+      form.elements.stock_message.value = settings.stockMessage || "";
+      form.elements.trade_rules_message.value = settings.tradeRulesMessage || "";
+      form.elements.contact_message.value = settings.contactMessage || "";
+      form.elements.business_hours.value = settings.businessHours || "";
+      form.elements.offline_message.value = settings.offlineMessage || "";
+      form.elements.mini_app_url.value = settings.miniAppUrl || "";
+      form.elements.channel_url.value = settings.channelUrl || "";
+      form.elements.group_url.value = settings.groupUrl || "";
+      form.elements.automatic_reply_enabled.checked = Boolean(settings.automaticReplyEnabled);
+      renderBotMenuButtons(settings.menuButtons || []);
+      renderAutoReplyRules();
+    } catch (error) {
+      state.botSettingsLoaded = false;
+      $("botSettingsApiNotice").hidden = false;
+      toast(humanBackendError(error));
+    }
+  }
+
+  function renderBotMenuButtons(buttons) {
+    $("botMenuButtons").innerHTML = [...buttons]
+      .sort((left, right) => Number(left.position) - Number(right.position))
+      .map((button) => `<div class="bot-menu-row" data-menu-key="${escapeAttribute(button.key)}">
+        <label>按钮名称<input data-menu-label maxlength="64" required value="${escapeAttribute(button.label)}" /></label>
+        <label>顺序<input data-menu-position type="number" min="0" max="1000" required value="${Number(button.position)}" /></label>
+        <label class="check"><input data-menu-visible type="checkbox" ${button.visible ? "checked" : ""} /> 显示</label>
+      </div>`).join("");
+  }
+
+  async function saveBotSettings(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    const menuButtons = [...$("botMenuButtons").querySelectorAll("[data-menu-key]")].map((row) => ({
+      key: row.dataset.menuKey,
+      label: row.querySelector("[data-menu-label]").value.trim(),
+      position: Number(row.querySelector("[data-menu-position]").value),
+      visible: row.querySelector("[data-menu-visible]").checked
+    }));
+    const button = $("saveBotSettings");
+    setButtonBusy(button, true, "保存中…");
+    try {
+      await backendRequest("/api/admin/bot/settings", {
+        method: "PATCH",
+        idempotencyKey: `bot-settings-${uniqueKey()}`,
+        body: {
+          expectedVersion: Number(form.elements.version.value),
+          welcomeMessage: form.elements.welcome_message.value.trim(),
+          helpMessage: form.elements.help_message.value.trim(),
+          whyUsMessage: form.elements.why_us_message.value.trim(),
+          stockMessage: form.elements.stock_message.value.trim(),
+          tradeRulesMessage: form.elements.trade_rules_message.value.trim(),
+          contactMessage: form.elements.contact_message.value.trim(),
+          businessHours: form.elements.business_hours.value.trim(),
+          offlineMessage: form.elements.offline_message.value.trim(),
+          miniAppUrl: form.elements.mini_app_url.value.trim(),
+          channelUrl: form.elements.channel_url.value.trim(),
+          groupUrl: form.elements.group_url.value.trim(),
+          automaticReplyEnabled: form.elements.automatic_reply_enabled.checked,
+          menuButtons
+        }
+      });
+      toast("机器人设置已保存，后续消息立即使用新配置");
+      await loadBotSettings();
+    } catch (error) {
+      toast(humanBackendError(error));
+    } finally {
+      setButtonBusy(button, false, "保存机器人设置");
+    }
+  }
+
+  function renderAutoReplyRules() {
+    $("autoReplyList").innerHTML = state.autoReplyRules.length
+      ? state.autoReplyRules.map((rule) => `<article class="moderation-rule-card ${rule.enabled ? "" : "rule-disabled"}">
+        <div><b>${escapeHtml(rule.keyword)}</b><span>${escapeHtml(autoReplyMatchLabel(rule.matchType))} · 优先级 ${Number(rule.priority)}</span></div>
+        <div class="moderation-rule-actions">
+          <button type="button" data-auto-reply-action="edit" data-auto-reply-id="${rule.id}">编辑</button>
+          <button type="button" data-auto-reply-action="toggle" data-auto-reply-id="${rule.id}">${rule.enabled ? "停用" : "启用"}</button>
+        </div>
+      </article>`).join("")
+      : '<div class="empty">暂无关键词自动回复</div>';
+  }
+
+  function handleAutoReplyAction(action, id) {
+    const rule = state.autoReplyRules.find((item) => item.id === id);
+    if (!rule) return;
+    if (action === "toggle") {
+      persistAutoReplyRule(rule, {...rule, enabled: !rule.enabled});
+      return;
+    }
+    const form = $("autoReplyForm");
+    form.elements.id.value = rule.id;
+    form.elements.version.value = String(rule.version);
+    form.elements.match_type.value = rule.matchType;
+    form.elements.keyword.value = rule.keyword;
+    form.elements.response_content.value = rule.responseContent;
+    form.elements.priority.value = String(rule.priority);
+    form.elements.enabled.checked = Boolean(rule.enabled);
+    form.scrollIntoView({behavior: "smooth", block: "center"});
+  }
+
+  async function saveAutoReplyRule(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    const existing = state.autoReplyRules.find((item) => item.id === form.elements.id.value) || null;
+    await persistAutoReplyRule(existing, {
+      enabled: form.elements.enabled.checked,
+      matchType: form.elements.match_type.value,
+      keyword: form.elements.keyword.value.trim(),
+      responseContent: form.elements.response_content.value.trim(),
+      priority: Number(form.elements.priority.value)
+    });
+  }
+
+  async function persistAutoReplyRule(existing, values) {
+    try {
+      const path = existing
+        ? `/api/admin/bot/auto-replies/${encodeURIComponent(existing.id)}`
+        : "/api/admin/bot/auto-replies";
+      await backendRequest(path, {
+        method: existing ? "PATCH" : "POST",
+        idempotencyKey: `auto-reply-${uniqueKey()}`,
+        body: {...values, ...(existing ? {expectedVersion: existing.version} : {})}
+      });
+      toast(existing ? "自动回复已更新" : "自动回复已创建");
+      $("autoReplyForm").reset();
+      $("autoReplyForm").elements.id.value = "";
+      $("autoReplyForm").elements.version.value = "1";
+      await loadBotSettings();
+    } catch (error) {
+      toast(humanBackendError(error));
+    }
+  }
+
+  function autoReplyMatchLabel(type) {
+    return ({exact: "完全匹配", contains: "包含", prefix: "开头匹配", regex: "正则表达式"})[type] || type;
+  }
+
+  async function loadModerationSettings() {
+    try {
+      const settings = await backendRequest("/api/admin/group/moderation-settings");
+      const form = $("moderationSettingsForm");
+      form.elements.version.value = String(settings.version);
+      form.elements.enabled.checked = Boolean(settings.enabled);
+      form.elements.violation_window_seconds.value = String(settings.violationWindowSeconds);
+      form.elements.mute_after_violations.value = String(settings.muteAfterViolations);
+      form.elements.ban_after_violations.value = String(settings.banAfterViolations);
+      form.elements.mute_duration_seconds.value = String(settings.muteDurationSeconds);
+      form.elements.warning_message.value = settings.warningMessage || "";
+      state.moderationLoaded = true;
+      $("moderationApiNotice").hidden = true;
+      await loadModerationRules();
+    } catch (error) {
+      state.moderationLoaded = false;
+      $("moderationApiNotice").hidden = false;
+      toast(humanBackendError(error));
+    }
+  }
+
+  async function loadModerationRules() {
+    const response = await backendRequest("/api/admin/group/moderation-rules");
+    state.moderationRules = Array.isArray(response.items) ? response.items : [];
+    $("moderationRuleList").innerHTML = state.moderationRules.length
+      ? state.moderationRules.map(moderationRuleCard).join("")
+      : '<div class="empty">暂无规则，请先添加关键词或链接规则</div>';
+  }
+
+  function moderationRuleCard(rule) {
+    const type = rule.ruleType === "link" ? "任意链接" : `关键词：${rule.pattern || ""}`;
+    const mode = ({log: "仅记录", delete: "逐级处罚", mute: "直接禁言", ban: "直接封禁"})[rule.mode] || rule.mode;
+    return `<article class="moderation-rule-card ${rule.enabled ? "" : "rule-disabled"}">
+      <div><b>${escapeHtml(type)}</b><span>${escapeHtml(mode)} · 优先级 ${Number(rule.priority)}</span></div>
+      <div class="moderation-rule-actions">
+        <button type="button" data-rule-action="edit" data-rule-id="${rule.id}">编辑</button>
+        <button type="button" data-rule-action="toggle" data-rule-id="${rule.id}">${rule.enabled ? "停用" : "启用"}</button>
+      </div>
+    </article>`;
+  }
+
+  function handleModerationRuleAction(action, id) {
+    const rule = state.moderationRules.find((item) => item.id === id);
+    if (!rule) return;
+    if (action === "edit") {
+      const form = $("moderationRuleForm");
+      form.elements.id.value = rule.id;
+      form.elements.version.value = String(rule.version);
+      form.elements.rule_type.value = rule.ruleType;
+      form.elements.pattern.value = rule.pattern || "";
+      form.elements.mode.value = rule.mode;
+      form.elements.action_duration_seconds.value = rule.actionDurationSeconds || "";
+      form.elements.priority.value = String(rule.priority);
+      form.elements.enabled.checked = Boolean(rule.enabled);
+      updateModerationRuleFields();
+      form.scrollIntoView({behavior: "smooth", block: "center"});
+      return;
+    }
+    saveModerationRuleState(rule, {...rule, enabled: !rule.enabled});
+  }
+
+  async function saveModerationRule(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    const id = form.elements.id.value;
+    await saveModerationRuleState(id ? state.moderationRules.find((item) => item.id === id) : null, {
+      enabled: form.elements.enabled.checked,
+      ruleType: form.elements.rule_type.value,
+      pattern: form.elements.pattern.value.trim(),
+      mode: form.elements.mode.value,
+      actionDurationSeconds: form.elements.action_duration_seconds.value ? Number(form.elements.action_duration_seconds.value) : null,
+      priority: Number(form.elements.priority.value || 100),
+      expectedVersion: Number(form.elements.version.value || 1)
+    });
+  }
+
+  async function saveModerationRuleState(existing, values) {
+    try {
+      const path = existing ? `/api/admin/group/moderation-rules/${encodeURIComponent(existing.id)}` : "/api/admin/group/moderation-rules";
+      await backendRequest(path, {
+        method: existing ? "PATCH" : "POST",
+        idempotencyKey: `moderation-rule-${uniqueKey()}`,
+        body: {...values, expectedVersion: existing?.version || values.expectedVersion}
+      });
+      toast(existing ? "规则已更新" : "规则已创建");
+      $("moderationRuleForm").reset();
+      $("moderationRuleForm").elements.id.value = "";
+      $("moderationRuleForm").elements.version.value = "1";
+      updateModerationRuleFields();
+      await loadModerationRules();
+    } catch (error) {
+      toast(humanBackendError(error));
+    }
+  }
+
+  function updateModerationRuleFields() {
+    const form = $("moderationRuleForm");
+    const keyword = form.elements.rule_type.value === "keyword";
+    form.elements.pattern.disabled = !keyword;
+    form.elements.pattern.required = keyword;
+    form.elements.pattern.placeholder = keyword ? "输入关键词" : "链接规则无需填写内容";
+  }
+
+  async function saveModerationSettings(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    const muteThreshold = Number(form.elements.mute_after_violations.value);
+    const banThreshold = Number(form.elements.ban_after_violations.value);
+    if (banThreshold < muteThreshold) {
+      toast("封禁阈值不能小于禁言阈值");
+      return;
+    }
+    const button = $("saveModerationSettings");
+    setButtonBusy(button, true, "保存中…");
+    try {
+      await backendRequest("/api/admin/group/moderation-settings", {
+        method: "PATCH",
+        idempotencyKey: `moderation-settings-${uniqueKey()}`,
+        body: {
+          expectedVersion: Number(form.elements.version.value),
+          enabled: form.elements.enabled.checked,
+          violationWindowSeconds: Number(form.elements.violation_window_seconds.value),
+          muteAfterViolations: muteThreshold,
+          banAfterViolations: banThreshold,
+          muteDurationSeconds: Number(form.elements.mute_duration_seconds.value),
+          warningMessage: form.elements.warning_message.value.trim()
+        }
+      });
+      toast("群治理设置已保存");
+      await loadModerationSettings();
+    } catch (error) {
+      toast(humanBackendError(error));
+    } finally {
+      setButtonBusy(button, false, "保存治理设置");
+    }
+  }
+
+  async function submitGroupMemberAction(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    const action = form.elements.action.value;
+    const userId = Number(form.elements.user_id.value);
+    const labels = {mute: "禁言", unmute: "解除限制", kick: "移出", ban: "封禁", unban: "解除封禁"};
+    if (!window.confirm(`确认对用户 ${userId} 执行“${labels[action] || action}”？`)) return;
+    const button = $("submitGroupMemberAction");
+    setButtonBusy(button, true, "提交中…");
+    try {
+      await backendRequest(`/api/admin/group/members/${encodeURIComponent(userId)}/actions`, {
+        method: "POST",
+        idempotencyKey: `group-${action}-${uniqueKey()}`,
+        body: {
+          action,
+          durationSeconds: Number(form.elements.duration_seconds.value),
+          reason: form.elements.reason.value.trim()
+        }
+      });
+      toast("成员操作已进入 Worker 队列");
+      form.reset();
+      form.elements.duration_seconds.value = "900";
+    } catch (error) {
+      toast(humanBackendError(error));
+    } finally {
+      setButtonBusy(button, false, "提交成员操作");
+    }
+  }
+
+  async function loadChannelPosts() {
+    const list = $("channelPostList");
+    list.innerHTML = '<div class="empty">正在加载频道记录…</div>';
+    try {
+      const response = await backendRequest("/api/admin/channel-posts?limit=100");
+      state.channelPosts = Array.isArray(response.items) ? response.items : [];
+      state.channelLoaded = true;
+      $("channelApiNotice").hidden = true;
+      renderChannelPosts();
+    } catch (error) {
+      state.channelLoaded = false;
+      $("channelApiNotice").hidden = false;
+      list.innerHTML = `<div class="empty">${escapeHtml(humanBackendError(error))}</div>`;
+    }
+  }
+
+  async function submitChannelPost(intent) {
+    const form = $("channelPostForm");
+    if (!form.reportValidity()) return;
+    const data = new FormData(form);
+    const text = String(data.get("text") || "").trim();
+    const scheduledLocal = String(data.get("scheduled_at") || "");
+    if (intent === "schedule" && !scheduledLocal) {
+      toast("请选择定时发布时间");
+      form.elements.scheduled_at.focus();
+      return;
+    }
+    const payload = {
+      contentType: "text",
+      content: {text, pin: data.get("pin") === "on"},
+      parseMode: data.get("parse_mode") || null,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Shanghai"
+    };
+    if (intent === "now") payload.publishNow = true;
+    if (intent === "schedule") payload.scheduledAt = new Date(scheduledLocal).toISOString();
+    const button = document.querySelector(`[data-channel-submit="${intent}"]`);
+    setButtonBusy(button, true, "提交中…");
+    try {
+      await backendRequest("/api/admin/channel-posts", {
+        method: "POST",
+        idempotencyKey: `channel-create-${uniqueKey()}`,
+        body: payload
+      });
+      form.reset();
+      toast(intent === "draft" ? "草稿已保存" : "发布任务已进入队列");
+      await loadChannelPosts();
+    } catch (error) {
+      toast(humanBackendError(error));
+    } finally {
+      setButtonBusy(button, false, intent === "draft" ? "保存草稿" : intent === "schedule" ? "定时发布" : "立即发布");
+    }
+  }
+
+  function renderChannelPosts() {
+    const list = $("channelPostList");
+    list.innerHTML = state.channelPosts.length
+      ? state.channelPosts.map(channelPostCard).join("")
+      : '<div class="empty">暂无频道内容</div>';
+  }
+
+  function channelPostCard(post) {
+    const text = String(post.content?.text || post.content?.media?.[0]?.caption || "媒体内容");
+    const published = post.status === "published" && !post.deletedAt;
+    const editable = published && post.contentType === "text";
+    const captionEditable = published && post.contentType !== "text";
+    const schedule = post.scheduledAt ? formatAdminDate(post.scheduledAt) : "未设置";
+    return `<article class="channel-post-card">
+      <div class="channel-post-top">
+        <div><span class="badge ${channelStatusClass(post.status)}">${escapeHtml(channelStatusLabel(post))}</span><span class="channel-version">v${Number(post.version || 1)}</span></div>
+        <time>${escapeHtml(schedule)}</time>
+      </div>
+      <p>${escapeHtml(text)}</p>
+      <div class="channel-post-meta"><span>${escapeHtml(post.contentType)}</span><span>${post.channelMessageIds?.length || 0} 条 Telegram 消息</span>${post.lastError ? `<span class="channel-error">${escapeHtml(post.lastError)}</span>` : ""}</div>
+      ${published ? `<div class="channel-card-actions">
+        ${editable ? `<button type="button" data-channel-action="edit_text" data-channel-id="${post.id}">编辑正文</button>` : ""}
+        ${captionEditable ? `<button type="button" data-channel-action="edit_caption" data-channel-id="${post.id}">编辑说明</button>` : ""}
+        <button type="button" data-channel-action="${post.isPinned ? "unpin" : "pin"}" data-channel-id="${post.id}">${post.isPinned ? "取消置顶" : "置顶"}</button>
+        <button class="danger-text" type="button" data-channel-action="delete" data-channel-id="${post.id}">删除消息</button>
+      </div>` : ""}
+    </article>`;
+  }
+
+  async function handleChannelAction(action, id) {
+    const post = state.channelPosts.find((item) => item.id === id);
+    if (!post) return;
+    const body = {action, expectedVersion: Number(post.version)};
+    if (action === "edit_text") {
+      const text = window.prompt("编辑频道正文", post.content?.text || "");
+      if (text === null) return;
+      body.text = text;
+      body.parseMode = post.parseMode;
+    }
+    if (action === "edit_caption") {
+      const caption = window.prompt("编辑媒体说明", post.content?.media?.[0]?.caption || "");
+      if (caption === null) return;
+      body.caption = caption;
+      body.parseMode = post.parseMode;
+    }
+    if (action === "delete" && !window.confirm("确认删除该频道消息？媒体组中的全部消息都会删除，此操作无法撤销。")) return;
+    try {
+      await backendRequest(`/api/admin/channel-posts/${encodeURIComponent(id)}/actions`, {
+        method: "POST",
+        idempotencyKey: `channel-${action}-${uniqueKey()}`,
+        body
+      });
+      toast("操作已进入 Worker 队列");
+      await loadChannelPosts();
+    } catch (error) {
+      toast(humanBackendError(error));
+    }
+  }
+
+  async function backendRequest(path, options = {}) {
+    const baseUrl = String(window.APP_CONFIG?.apiBaseUrl || "").replace(/\/$/, "");
+    if (!baseUrl) throw new Error("backend_not_configured");
+    const {data, error} = await state.supabase.auth.getSession();
+    if (error || !data.session?.access_token) throw new Error("admin_session_missing");
+    const response = await fetch(`${baseUrl}${path}`, {
+      method: options.method || "GET",
+      headers: {
+        authorization: `Bearer ${data.session.access_token}`,
+        ...(options.body ? {"content-type": "application/json"} : {}),
+        ...(options.idempotencyKey ? {"x-idempotency-key": options.idempotencyKey} : {})
+      },
+      ...(options.body ? {body: JSON.stringify(options.body)} : {})
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const failure = new Error(payload.error || `http_${response.status}`);
+      failure.status = response.status;
+      throw failure;
+    }
+    return payload;
+  }
+
+  function channelStatusLabel(post) {
+    if (post.deletedAt) return "已删除";
+    return ({draft: "草稿", scheduled: "待发布", publishing: "发布中", published: "已发布", cancelled: "已取消", failed: "待重试", dead_letter: "发送失败"})[post.status] || post.status;
+  }
+
+  function channelStatusClass(status) {
+    return status === "published" ? "live" : status === "failed" || status === "dead_letter" ? "off" : "";
+  }
+
+  function formatAdminDate(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "时间未知" : date.toLocaleString("zh-CN", {hour12: false});
+  }
+
+  function humanBackendError(error) {
+    const code = String(error?.message || error || "");
+    if (code === "backend_not_configured") return "后端 API 地址尚未配置";
+    if (code === "admin_session_missing" || code === "missing_admin_auth" || code === "invalid_admin_auth") return "管理员登录已失效，请重新登录";
+    if (code === "forbidden") return "当前账号没有运营权限";
+    if (code === "version_status_or_operation_conflict") return "记录已变化或已有操作处理中，请刷新后重试";
+    if (code === "duplicate_request") return "该操作已提交，请勿重复点击";
+    if (/Failed to fetch/i.test(code)) return "无法连接运营后端，请检查服务状态";
+    return `操作失败：${code || "未知错误"}`;
   }
 
   function openProductModal(product = null) {
@@ -449,11 +990,15 @@
     form.elements.sort_order.value = String(nextSortOrder());
     form.elements.is_active.checked = true;
     form.elements.is_featured.checked = false;
+    form.elements.currency.value = "CNY";
+    form.elements.product_type.value = "physical";
+    form.elements.unlimited_inventory.checked = true;
 
     clearImageItems();
     state.imageItems = productImages(product).map((url) => ({key: uniqueKey(), type: "existing", url, previewUrl: url, file: null}));
     $("productModalTitle").textContent = product ? "编辑商品" : "新增商品";
-    $("deleteProductButton").hidden = !product;
+    $("deleteProductButton").hidden = !product || Boolean(product.deleted_at);
+    $("deleteProductButton").textContent = state.commerceReady ? "移入回收记录" : "删除商品";
     $("productImage").value = "";
     refreshCategoryControls();
 
@@ -462,6 +1007,10 @@
       form.elements.id.value = product.id;
       form.elements.is_active.checked = Boolean(product.is_active);
       form.elements.is_featured.checked = Boolean(product.is_featured);
+      if (state.commerceReady) {
+        form.elements.price_yuan.value = product.price_minor == null ? "" : (Number(product.price_minor) / 100).toFixed(2);
+        form.elements.unlimited_inventory.checked = Boolean(product.unlimited_inventory);
+      }
       const category = categoryForProduct(product);
       form.elements.category_id.value = category.id ? `id:${category.id}` : `name:${category.name}`;
     } else {
@@ -600,6 +1149,23 @@
       };
       if (state.multiImageReady) payload.image_urls = cleanImageUrls;
       if (state.categoriesReady) payload.category_id = category.id;
+      if (state.commerceReady) {
+        const priceYuan = form.elements.price_yuan.value.trim();
+        const inventory = form.elements.inventory_count.value.trim();
+        const priceMinor = priceYuan === "" ? null : Math.round(Number(priceYuan) * 100);
+        const inventoryCount = inventory === "" ? null : Number(inventory);
+        if (priceMinor != null && (!Number.isSafeInteger(priceMinor) || priceMinor < 0)) throw new Error("下单价格格式不正确");
+        if (inventoryCount != null && (!Number.isSafeInteger(inventoryCount) || inventoryCount < 0)) throw new Error("库存数量必须是非负整数");
+        Object.assign(payload, {
+          price_minor: priceMinor,
+          currency: form.elements.currency.value,
+          inventory_count: inventoryCount,
+          unlimited_inventory: form.elements.unlimited_inventory.checked,
+          product_type: form.elements.product_type.value,
+          purchase_instructions: form.elements.purchase_instructions.value.trim(),
+          after_sales_instructions: form.elements.after_sales_instructions.value.trim()
+        });
+      }
 
       const id = Number(form.elements.id.value);
       const query = id
@@ -631,15 +1197,21 @@
 
   async function deleteProduct() {
     const id = Number($("productForm").elements.id.value);
-    if (!id || !confirm("确定删除这个商品吗？删除后无法恢复。")) return;
+    const prompt = state.commerceReady
+      ? "确定移入回收记录吗？商品会立即下架，数据仍可恢复。"
+      : "确定删除这个商品吗？当前数据库尚未启用软删除，删除后无法恢复。";
+    if (!id || !confirm(prompt)) return;
     setButtonBusy($("deleteProductButton"), true, "删除中…");
-    const {error} = await state.supabase.from("products").delete().eq("id", id);
-    setButtonBusy($("deleteProductButton"), false, "删除商品");
+    const query = state.commerceReady
+      ? state.supabase.from("products").update({is_active: false, deleted_at: new Date().toISOString()}).eq("id", id)
+      : state.supabase.from("products").delete().eq("id", id);
+    const {error} = await query;
+    setButtonBusy($("deleteProductButton"), false, state.commerceReady ? "移入回收记录" : "删除商品");
     if (error) {
       toast(humanError(error));
       return;
     }
-    toast("商品已删除");
+    toast(state.commerceReady ? "商品已移入回收记录" : "商品已删除");
     closeProductModal();
     await loadProducts();
   }
@@ -654,6 +1226,7 @@
       if (action === "move-up") await moveProduct(id, -1);
       if (action === "move-down") await moveProduct(id, 1);
       if (action === "copy") await copyProduct(product);
+      if (action === "restore") await updateProduct(id, {deleted_at: null, is_active: false}, "商品已恢复并保持下架");
     } catch (error) {
       toast(humanError(error));
     }
@@ -668,12 +1241,16 @@
 
   async function duplicateProduct(product) {
     const payload = {};
-    PRODUCT_FIELDS.forEach((field) => {
+    productFields().forEach((field) => {
       if (field in product && !(field === "category_id" && !state.categoriesReady)) payload[field] = product[field];
     });
     payload.name = `${product.name}（副本）`;
     payload.is_active = false;
     payload.sort_order = nextSortOrder();
+    if (state.commerceReady) {
+      payload.deleted_at = null;
+      payload.sales_count = 0;
+    }
     const {error} = await state.supabase.from("products").insert(payload);
     if (error) throw error;
     toast("商品副本已创建并设为下架");
@@ -737,10 +1314,16 @@
     if (!ids.length) return;
     try {
       if (action === "delete") {
-        if (!confirm(`确定删除已选择的 ${ids.length} 个商品吗？此操作无法恢复。`)) return;
-        const {error} = await state.supabase.from("products").delete().in("id", ids);
+        const prompt = state.commerceReady
+          ? `确定将已选择的 ${ids.length} 个商品移入回收记录吗？商品会立即下架。`
+          : `确定删除已选择的 ${ids.length} 个商品吗？当前数据库尚未启用软删除，此操作无法恢复。`;
+        if (!confirm(prompt)) return;
+        const query = state.commerceReady
+          ? state.supabase.from("products").update({is_active: false, deleted_at: new Date().toISOString()}).in("id", ids)
+          : state.supabase.from("products").delete().in("id", ids);
+        const {error} = await query;
         if (error) throw error;
-        toast("已批量删除");
+        toast(state.commerceReady ? "已批量移入回收记录" : "已批量删除");
       } else if (action === "category") {
         const category = categoryFromKey($("bulkCategorySelect").value);
         if (!category) throw new Error("请选择目标分类");
@@ -1007,7 +1590,7 @@
       const categoryMap = new Map(state.categories.map((item) => [item.name, item.id]));
       const records = products.map((item) => {
         const record = {};
-        PRODUCT_FIELDS.forEach((field) => {
+        productFields().forEach((field) => {
           if (field in item && !(field === "category_id" && !state.categoriesReady)) record[field] = item[field];
         });
         if (Number.isFinite(Number(item.id))) record.id = Number(item.id);
@@ -1021,6 +1604,20 @@
         record.is_active = Boolean(record.is_active);
         record.is_featured = Boolean(record.is_featured);
         record.sort_order = Number(record.sort_order || 0);
+        if (state.commerceReady) {
+          record.price_minor = record.price_minor == null || record.price_minor === "" ? null : Number(record.price_minor);
+          record.currency = String(record.currency || "CNY").toUpperCase();
+          record.inventory_count = record.inventory_count == null || record.inventory_count === "" ? null : Number(record.inventory_count);
+          record.unlimited_inventory = record.unlimited_inventory !== false;
+          record.sales_count = Math.max(0, Number(record.sales_count || 0));
+          record.product_type = record.product_type === "digital" ? "digital" : "physical";
+          record.purchase_instructions = String(record.purchase_instructions || "");
+          record.after_sales_instructions = String(record.after_sales_instructions || "");
+          record.deleted_at = record.deleted_at ? String(record.deleted_at) : null;
+          if (record.price_minor != null && (!Number.isSafeInteger(record.price_minor) || record.price_minor < 0)) throw new Error(`商品“${record.name}”的数值价格无效`);
+          if (record.inventory_count != null && (!Number.isSafeInteger(record.inventory_count) || record.inventory_count < 0)) throw new Error(`商品“${record.name}”的库存无效`);
+          if (!/^[A-Z]{3}$/.test(record.currency)) throw new Error(`商品“${record.name}”的币种无效`);
+        }
         return record;
       });
 
@@ -1042,6 +1639,10 @@
 
   function productById(id) {
     return state.products.find((item) => Number(item.id) === Number(id));
+  }
+
+  function productFields() {
+    return state.commerceReady ? [...PRODUCT_FIELDS, ...COMMERCE_PRODUCT_FIELDS] : PRODUCT_FIELDS;
   }
 
   function categoryById(id) {

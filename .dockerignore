@@ -1,0 +1,17 @@
+.git
+.env
+.env.*
+!.env.example
+node_modules
+dist
+dist-test
+coverage
+logs
+*.log
+*.bak
+*.pem
+*.crt
+*.cer
+*.key
+downloads
+tmp

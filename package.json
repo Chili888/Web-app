@@ -1,0 +1,41 @@
+{
+  "name": "tj-telegram-center",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run clean && tsc -p tsconfig.build.json && npm run build:static",
+    "build:static": "node scripts/copy-static.mjs",
+    "clean": "node scripts/clean.mjs",
+    "dev:api": "tsx watch --env-file-if-exists=.env apps/bot-backend/src/server.ts",
+    "dev:worker": "tsx watch --env-file-if-exists=.env apps/bot-backend/src/worker.ts",
+    "dev:static": "python3 -m http.server 8000",
+    "deploy:check": "node scripts/preflight-env.mjs",
+    "db:audit": "node scripts/audit-database.mjs",
+    "lint": "eslint . --max-warnings=0",
+    "migrate": "tsx --env-file-if-exists=.env apps/bot-backend/src/cli/migrate.ts",
+    "outbox:retry": "tsx --env-file-if-exists=.env apps/bot-backend/src/cli/retry-outbox.ts",
+    "start:api": "node dist/apps/bot-backend/src/server.js",
+    "start:worker": "node dist/apps/bot-backend/src/worker.js",
+    "test": "npm run build:test && node --test --test-concurrency=1 dist-test/apps/bot-backend/test/*.test.js",
+    "test:integration": "npm run build:test && node --test --test-concurrency=1 dist-test/apps/bot-backend/test/postgres.integration.test.js",
+    "build:test": "node scripts/clean-test.mjs && tsc -p tsconfig.test.json",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "pg": "^8.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.0.0",
+    "eslint": "^9.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}
