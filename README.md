@@ -26,6 +26,8 @@ apps/bot-backend/src/       Webhook、Worker、Telegram gateway、Store和安全
 apps/bot-backend/test/      fake Telegram单测及可选 PostgreSQL集成测试
 supabase/migrations/        兼容、非破坏性后端 migration
 assets/ admin/              原有静态商城和商品后台
+deploy/frontend/            服务器静态前端镜像配置
+deploy/1panel/              1Panel/OpenResty同域路由示例
 ```
 
 ## 检查命令
@@ -55,7 +57,7 @@ TELEGRAM_ADMIN_IDS
 TELEGRAM_MAIN_CHANNEL
 TELEGRAM_DISCUSSION_GROUP
 TELEGRAM_INIT_DATA_MAX_AGE_SECONDS
-STOREFRONT_ORIGIN
+STOREFRONT_ORIGINS
 APP_TIMEZONE
 JOIN_VERIFY_ENABLED
 JOIN_VERIFY_TIMEOUT_SECONDS
@@ -63,11 +65,11 @@ JOIN_VERIFY_TIMEOUT_ACTION
 AUTO_REPLY_ENABLED
 ```
 
-`STOREFRONT_ORIGIN` 必须是 Mini App 的精确来源，例如 `https://chili888.github.io`，不能包含路径。部署 API 后，在公开的 `config.js` 中填写非敏感的 `apiBaseUrl`；不要把 Token、数据库连接或 service role key 放入该文件。
+`STOREFRONT_ORIGINS` 是逗号分隔的精确来源列表，不能包含路径。切换期间同时配置 `https://bot.cverseintl.cloud,https://chili888.github.io`，可保留 GitHub Pages回滚入口。`STOREFRONT_ORIGIN` 仅作旧版单来源兼容。
 
 `SUPABASE_URL` 和 `SUPABASE_ANON_KEY` 用于后端调用 Supabase Auth 验证现有后台登录会话；它们是公开项目配置，不是 `service_role`。后端随后还会查询 `public.admin_profiles`，因此仅持有普通 Supabase 账号不能调用运营 API。
 
-Supabase 生产连接默认使用 `DATABASE_SSL_MODE=verify-full`。从 Supabase Dashboard 的 Database Settings 下载项目 Server root certificate，再执行 `base64 -w 0 prod-supabase.cer`，将结果仅写入部署环境的 `DATABASE_SSL_CA_BASE64`。证书无需发到聊天中，也不要提交证书文件。`require` 模式只加密但不校验服务器身份，不作为生产预检的合格配置。
+API、Worker和 migration CLI使用 Compose内部 PostgreSQL，连接目标固定为 `db:5432/postgres`。数据库不映射宿主机或公网端口，数据保存在命名卷 `support-db-data`。`DATABASE_URL` 的账号、密码必须与 `POSTGRES_USER`、`POSTGRES_PASSWORD` 一致；真实值只保存在服务器 `.env`。
 
 `TELEGRAM_AGENT_ALLOWLIST` 仅作为 `TELEGRAM_ADMIN_IDS` 的兼容回退。以下旧变量不再读取：
 
@@ -121,18 +123,23 @@ docker compose ps
 
 ## 生产 Compose
 
-生产环境使用外部 PostgreSQL/Supabase连接，不启动本地数据库。先执行只检查变量名和格式、不会输出变量值的预检：
+生产环境使用 Compose内部 PostgreSQL和持久卷。先备份 `support-db-data`，再执行只检查变量名和格式、不会输出变量值的预检：
 
 ```bash
 docker run --rm --env-file .env tj-telegram-center:local npm run deploy:check
-docker run --rm --env-file .env tj-telegram-center:local npm run db:audit
 docker compose -f docker-compose.production.yml build
-docker compose -f docker-compose.production.yml --profile tools run --rm migrate
-docker compose -f docker-compose.production.yml up -d api worker
+docker compose -f docker-compose.production.yml up -d db
+docker compose -f docker-compose.production.yml up -d api worker frontend
 docker compose -f docker-compose.production.yml ps
 ```
 
-迁移必须在已审核备份后人工执行。API仅监听 `127.0.0.1`，由 1Panel网站反向代理提供 HTTPS；不要直接暴露容器端口。回滚时恢复上一镜像标签并重新 `up -d`，数据库新增表和字段保留，不执行 DROP。
+本轮服务器托管切换不执行 migration。只有确认 Docker PostgreSQL 的 `support.schema_migrations` 与当前代码兼容、完成备份并单独审核后，才允许人工运行 migration。API仅监听 `127.0.0.1:3000`，静态前端仅监听 `127.0.0.1:8080`，数据库和 Worker不映射端口。
+
+将 [`deploy/1panel/bot.cverseintl.cloud.locations.conf`](deploy/1panel/bot.cverseintl.cloud.locations.conf) 中的 location配置加入现有 1Panel HTTPS网站：`/api/`、`/telegram/webhook` 和 `/health` 转发到 API，其余路径转发到静态前端。修改 OpenResty前先备份网站配置并执行配置检查；不要改 DNS或 Webhook。
+
+服务器前端镜像使用 [`deploy/frontend/config.production.js`](deploy/frontend/config.production.js)，其 `pageUrl` 和 `apiBaseUrl` 均为 `bot.cverseintl.cloud`。仓库根目录的 `config.js` 保持 GitHub Pages地址，因此旧入口仍可回滚。人工验收全部通过前，不修改 BotFather Mini App URL或数据库中的机器人商城按钮 URL。
+
+回滚时恢复旧 OpenResty配置，使 `/` 重新指向 API或旧入口；再用上一 API/Worker镜像标签重新创建容器。不要执行 `docker compose down -v`，也不要删除 `support-db-data`。
 
 API：
 

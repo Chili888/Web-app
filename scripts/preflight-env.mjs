@@ -1,26 +1,25 @@
-import {Buffer} from "node:buffer";
-
 const required = [
   "TELEGRAM_BOT_TOKEN",
   "TELEGRAM_WEBHOOK_SECRET",
   "TELEGRAM_ADMIN_IDS",
   "TELEGRAM_MAIN_CHANNEL",
   "TELEGRAM_DISCUSSION_GROUP",
-  "SUPABASE_DATABASE_URL",
   "SUPABASE_URL",
   "SUPABASE_ANON_KEY",
-  "DATABASE_SSL_CA_BASE64",
+  "DATABASE_URL",
+  "POSTGRES_DB",
+  "POSTGRES_USER",
+  "POSTGRES_PASSWORD",
   "APP_BASE_URL",
-  "STOREFRONT_ORIGIN"
+  "STOREFRONT_ORIGINS"
 ];
 
 const missing = required.filter((name) => !process.env[name]?.trim());
 const invalid = [];
 
 validateHttpsUrl("APP_BASE_URL", false);
-validateHttpsUrl("STOREFRONT_ORIGIN", true);
-validateSupabaseDatabaseUrl();
-validateDatabaseSsl();
+validateOrigins();
+validateInternalDatabaseUrl();
 
 if (missing.length || invalid.length) {
   if (missing.length) process.stderr.write(`Missing environment variables: ${missing.join(", ")}\n`);
@@ -41,29 +40,33 @@ function validateHttpsUrl(name, originOnly) {
   }
 }
 
-function validateSupabaseDatabaseUrl() {
-  const value = process.env.SUPABASE_DATABASE_URL?.trim();
+function validateInternalDatabaseUrl() {
+  const value = process.env.DATABASE_URL?.trim();
   if (!value) return;
   try {
     const url = new URL(value);
     if (
       !["postgres:", "postgresql:"].includes(url.protocol)
-      || !url.hostname.endsWith(".pooler.supabase.com")
+      || url.hostname !== "db"
       || url.port !== "5432"
-      || url.pathname !== "/postgres"
-    ) invalid.push("SUPABASE_DATABASE_URL");
+      || url.pathname !== `/${process.env.POSTGRES_DB}`
+      || decodeURIComponent(url.username) !== process.env.POSTGRES_USER
+      || decodeURIComponent(url.password) !== process.env.POSTGRES_PASSWORD
+    ) invalid.push("DATABASE_URL");
   } catch {
-    invalid.push("SUPABASE_DATABASE_URL");
+    invalid.push("DATABASE_URL");
   }
 }
 
-function validateDatabaseSsl() {
-  const mode = process.env.DATABASE_SSL_MODE?.trim().toLowerCase() || "verify-full";
-  if (mode !== "verify-full") invalid.push("DATABASE_SSL_MODE");
-  const encodedCa = process.env.DATABASE_SSL_CA_BASE64?.trim();
-  if (!encodedCa) return;
-  const ca = Buffer.from(encodedCa, "base64").toString("utf8");
-  if (!ca.includes("-----BEGIN CERTIFICATE-----") || !ca.includes("-----END CERTIFICATE-----")) {
-    invalid.push("DATABASE_SSL_CA_BASE64");
+function validateOrigins() {
+  const origins = process.env.STOREFRONT_ORIGINS?.split(",").map((value) => value.trim()).filter(Boolean) || [];
+  if (!origins.length) return;
+  for (const value of origins) {
+    try {
+      const url = new URL(value);
+      if (url.protocol !== "https:" || url.origin !== value.replace(/\/$/, "")) invalid.push("STOREFRONT_ORIGINS");
+    } catch {
+      invalid.push("STOREFRONT_ORIGINS");
+    }
   }
 }

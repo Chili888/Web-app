@@ -12,6 +12,14 @@ COPY assets ./assets
 COPY admin ./admin
 RUN npm run build
 
+FROM nginx:1.27-alpine AS frontend
+COPY deploy/frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist/static /usr/share/nginx/html
+COPY deploy/frontend/config.production.js /usr/share/nginx/html/config.js
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1
+
 FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
